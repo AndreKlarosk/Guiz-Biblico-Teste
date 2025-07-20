@@ -1,3 +1,4 @@
+// admin.js
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 // Adicionado onSnapshot à importação do firestore
@@ -69,6 +70,8 @@ const adminGroupDetailCreator = document.getElementById('admin-group-detail-crea
 const adminGroupDetailDifficulty = document.getElementById('admin-group-detail-difficulty');
 const adminGroupDetailRankingTbody = document.getElementById('admin-group-detail-ranking-tbody');
 const adminGroupDetailChatMessages = document.getElementById('admin-group-detail-chat-messages');
+const adminChatForm = document.getElementById('admin-chat-form');
+const adminChatInput = document.getElementById('admin-chat-input');
 
 let lastVisibleGroup = null;
 let currentGroupDetailsUnsubscribe = null; // Para desinscrever do listener do chat do grupo
@@ -1053,20 +1056,26 @@ async function openAdminGroupDetailsModal(groupId) {
                     const messageElement = document.createElement('div');
                     messageElement.classList.add('admin-chat-message');
 
-                    // Verificar se o usuário está silenciado para exibir o status da mensagem
                     let senderName = msg.senderName || 'Desconhecido';
+
+                    // Check if the message itself was marked as silenced by admin (optional: if you add a 'silenced' field to messages)
+                    if (msg.silenced) { // Assuming 'silenced' field exists on message document
+                        messageElement.classList.add('silenced-message-admin-view'); // Special class for admin view
+                        senderName += ' (silenciada)'; // Append text for admin clarity
+                    }
+
+                    // Check if the sender is currently silenced
                     if (msg.senderUid) {
                         const senderUserDoc = await getDoc(doc(db, 'usuarios', msg.senderUid));
                         if (senderUserDoc.exists()) {
                             const senderData = senderUserDoc.data();
                             const silencedUntil = senderData.silenciadoAte && senderData.silenciadoAte.toDate();
                             if (silencedUntil && silencedUntil > new Date()) {
-                                messageElement.classList.add('silenced');
-                                // Opcional: mostrar "silenciado" no nome, mas o CSS já pode estilizar a bolha
-                                // senderName += ' (silenciado)'; 
+                                messageElement.classList.add('sender-silenced'); // Class to indicate sender is silenced
+                                senderName += ' (usuário silenciado)'; // Append text for admin clarity
                             }
                         }
-                    } else if (msg.systemMessage) { // Mensagens do sistema não têm senderUid
+                    } else if (msg.systemMessage) {
                         messageElement.classList.add('system-message');
                     }
                     
@@ -1081,6 +1090,13 @@ async function openAdminGroupDetailsModal(groupId) {
                 console.error("Erro ao ouvir o chat do grupo no admin:", error);
                 adminGroupDetailChatMessages.innerHTML = '<p style="color: red;">Erro ao carregar chat.</p>';
             });
+        }
+
+        // Link chat form submit to admin message sending
+        if (adminChatForm) {
+            // Ensure to remove previous listener if the modal is opened multiple times
+            adminChatForm.removeEventListener('submit', handleAdminGroupChatSubmit);
+            adminChatForm.addEventListener('submit', (e) => handleAdminGroupChatSubmit(e, groupId));
         }
 
         if (adminGroupDetailsModal) adminGroupDetailsModal.classList.add('visible');
@@ -1144,5 +1160,31 @@ async function silenceMember(groupId, memberUid) {
     } catch (error) {
         console.error("Erro ao silenciar membro:", error);
         showAlert("Não foi possível silenciar o membro.");
+    }
+}
+
+async function handleAdminGroupChatSubmit(e, currentGroupId) {
+    e.preventDefault();
+    const messageText = adminChatInput.value.trim();
+    if (messageText.length === 0 || !currentGroupId) return;
+
+    adminChatInput.disabled = true;
+
+    try {
+        const messagesRef = collection(db, 'grupos', currentGroupId, 'mensagens');
+        await addDoc(messagesRef, {
+            text: messageText,
+            senderUid: auth.currentUser.uid, // Admin's UID
+            senderName: auth.currentUser.displayName || 'Admin', // Admin's name
+            timestamp: serverTimestamp(),
+            systemMessage: true // Mark as a system message from admin
+        });
+        adminChatInput.value = '';
+    } catch (error) {
+        console.error("Erro ao enviar mensagem do admin para o chat do grupo:", error);
+        showAlert("Não foi possível enviar a mensagem para o chat do grupo.");
+    } finally {
+        adminChatInput.disabled = false;
+        adminChatInput.focus();
     }
 }
