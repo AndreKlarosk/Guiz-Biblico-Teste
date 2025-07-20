@@ -2,7 +2,7 @@ import { auth, db } from './firebase.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, query, orderBy, limit, startAfter, where, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// --- Elementos da UI ---
+// --- Elementos da Interface do Usuário (UI) ---
 const adminContent = document.getElementById('admin-content');
 const authGuardMessage = document.getElementById('auth-guard-message');
 const questionsTbody = document.getElementById('questions-tbody');
@@ -52,13 +52,13 @@ const filterModeratorStatusSelect = document.getElementById('filter-moderator-st
 const requestsPerPage = 10;
 let lastVisibleRequest = null;
 
-// Planos para referência
+// Planos para referência (mantidos para consistência, mas o ideal é que venham do Firestore em um app real)
 const MODERATOR_PLANS = {
     "basico": { preco: 10, grupos: 1, maxConvidados: 5 },
     "plus": { preco: 20, grupos: 3, maxConvidados: 15 }
 };
 
-// --- Proteção de Rota ---
+// --- Proteção de Rota (Verificação de Administrador) ---
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         const userRef = doc(db, 'usuarios', user.uid);
@@ -68,7 +68,7 @@ onAuthStateChanged(auth, async (user) => {
             adminContent.classList.remove('hidden');
             loadQuestions();
             loadSuggestions();
-            loadModeratorRequests();
+            loadModeratorRequests(); // Carregar solicitações de moderador ao carregar o painel
         } else {
             authGuardMessage.innerHTML = '<h2>Acesso Negado</h2><p>Você não tem permissão para acessar esta página.</p>';
         }
@@ -77,9 +77,9 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// --- Lógica CRUD de Perguntas (sem alterações) ---
+// --- Lógica CRUD de Perguntas ---
 async function loadQuestions() {
-    questionsTbody.innerHTML = '<tr><td colspan="3">Carregando...</td></tr>';
+    questionsTbody.innerHTML = '<tr><td colspan="3">Carregando perguntas...</td></tr>';
     try {
         const querySnapshot = await getDocs(collection(db, "perguntas"));
         if (querySnapshot.empty) {
@@ -203,7 +203,7 @@ exportBtn.addEventListener('click', async () => {
         const perguntas = [];
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            delete data.ultimaAtualizacao;
+            delete data.ultimaAtualizacao; // Remove campos de timestamp antes de exportar
             perguntas.push(data);
         });
         if (perguntas.length === 0) {
@@ -221,8 +221,8 @@ exportBtn.addEventListener('click', async () => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     } catch (error) {
-        console.error("Erro ao exportar: ", error);
-        alert("Ocorreu um erro ao exportar.");
+        console.error("Erro ao exportar perguntas:", error);
+        alert("Ocorreu um erro ao exportar as perguntas.");
     }
 });
 
@@ -240,18 +240,19 @@ importBtn.addEventListener('click', () => {
                 alert("Arquivo JSON inválido ou vazio.");
                 return;
             }
-            if (!confirm(`Deseja importar ${perguntas.length} perguntas?`)) return;
+            if (!confirm(`Deseja importar ${perguntas.length} perguntas? Isso pode substituir ou adicionar dados.`)) return;
             const batch = writeBatch(db);
             const perguntasCollection = collection(db, "perguntas");
             let importedCount = 0;
             perguntas.forEach(pergunta => {
                 if (pergunta.enunciado && Array.isArray(pergunta.alternativas)) {
+                    // Garante que faixaEtaria exista e seja um array
                     if (!pergunta.faixaEtaria || !Array.isArray(pergunta.faixaEtaria) || pergunta.faixaEtaria.length === 0) {
-                        pergunta.faixaEtaria = ["adolescente", "adulto"];
+                        pergunta.faixaEtaria = ["adolescente", "adulto"]; // Valor padrão
                     }
                     batch.set(doc(perguntasCollection), {
                         ...pergunta,
-                        ultimaAtualizacao: serverTimestamp()
+                        ultimaAtualizacao: serverTimestamp() // Adiciona timestamp de última atualização
                     });
                     importedCount++;
                 }
@@ -261,14 +262,14 @@ importBtn.addEventListener('click', () => {
             loadQuestions();
             importFileInput.value = '';
         } catch (error) {
-            console.error("Erro ao importar: ", error);
-            alert("Erro ao processar o arquivo JSON.");
+            console.error("Erro ao importar perguntas:", error);
+            alert("Erro ao processar o arquivo JSON ou importar perguntas.");
         }
     };
     reader.readAsText(file);
 });
 
-// --- Lógica de Sugestões (sem alterações) ---
+// --- Lógica de Sugestões ---
 async function loadSuggestions(clear = true) {
     if (clear) {
         suggestionsTbody.innerHTML = '<tr><td colspan="5">Carregando sugestões...</td></tr>';
@@ -279,21 +280,26 @@ async function loadSuggestions(clear = true) {
         let q;
         const statusFilter = filterStatusSelect.value;
 
+        // Base da query
+        let baseQuery = collection(db, "sugestoes");
+        
+        // Aplica o filtro de status
         if (statusFilter === 'pending') {
-            q = query(collection(db, "sugestoes"), where("respondida", "==", false), orderBy("data", "desc"), limit(suggestionsPerPage));
+            q = query(baseQuery, where("respondida", "==", false), orderBy("data", "desc"), limit(suggestionsPerPage));
         } else if (statusFilter === 'responded') {
-            q = query(collection(db, "sugestoes"), where("respondida", "==", true), orderBy("data", "desc"), limit(suggestionsPerPage));
-        } else {
-            q = query(collection(db, "sugestoes"), orderBy("data", "desc"), limit(suggestionsPerPage));
+            q = query(baseQuery, where("respondida", "==", true), orderBy("data", "desc"), limit(suggestionsPerPage));
+        } else { // 'all'
+            q = query(baseQuery, orderBy("data", "desc"), limit(suggestionsPerPage));
         }
         
+        // Aplica startAfter para paginação, se não for uma carga inicial
         if (lastVisibleSuggestion && clear === false) {
-            if (statusFilter === 'pending') {
-                q = query(collection(db, "sugestoes"), where("respondida", "==", false), orderBy("data", "desc"), startAfter(lastVisibleSuggestion), limit(suggestionsPerPage));
+             if (statusFilter === 'pending') {
+                q = query(baseQuery, where("respondida", "==", false), orderBy("data", "desc"), startAfter(lastVisibleSuggestion), limit(suggestionsPerPage));
             } else if (statusFilter === 'responded') {
-                q = query(collection(db, "sugestoes"), where("respondida", "==", true), orderBy("data", "desc"), startAfter(lastVisibleSuggestion), limit(suggestionsPerPage));
-            } else {
-                q = query(collection(db, "sugestoes"), orderBy("data", "desc"), startAfter(lastVisibleSuggestion), limit(suggestionsPerPage));
+                q = query(baseQuery, where("respondida", "==", true), orderBy("data", "desc"), startAfter(lastVisibleSuggestion), limit(suggestionsPerPage));
+            } else { // 'all'
+                q = query(baseQuery, orderBy("data", "desc"), startAfter(lastVisibleSuggestion), limit(suggestionsPerPage));
             }
         }
 
@@ -304,7 +310,7 @@ async function loadSuggestions(clear = true) {
         });
 
         if (clear) {
-            suggestionsTbody.innerHTML = '';
+            suggestionsTbody.innerHTML = ''; // Limpa a tabela para novas sugestões
         }
 
         if (newSuggestions.length === 0 && clear) {
@@ -315,6 +321,7 @@ async function loadSuggestions(clear = true) {
 
         newSuggestions.forEach((suggestion) => {
             const row = document.createElement('tr');
+            // Converte timestamp do Firestore para formato legível
             const date = suggestion.data && typeof suggestion.data.toDate === 'function' ? suggestion.data.toDate().toLocaleString() : 'N/A';
             const status = suggestion.respondida ? 'Respondida' : 'Pendente';
             row.innerHTML = `
@@ -330,11 +337,12 @@ async function loadSuggestions(clear = true) {
             suggestionsTbody.appendChild(row);
         });
 
+        // Mostra/oculta o botão "Carregar Mais"
         if (newSuggestions.length < suggestionsPerPage) {
             loadMoreSuggestionsBtn.classList.add('hidden');
         } else {
             loadMoreSuggestionsBtn.classList.remove('hidden');
-            lastVisibleSuggestion = querySnapshot.docs[querySnapshot.docs.length - 1];
+            lastVisibleSuggestion = querySnapshot.docs[querySnapshot.docs.length - 1]; // Armazena o último documento para paginação
         }
 
     } catch (error) {
@@ -346,6 +354,7 @@ async function loadSuggestions(clear = true) {
     }
 }
 
+// Event listeners para a seção de sugestões
 if (loadMoreSuggestionsBtn) {
     loadMoreSuggestionsBtn.addEventListener('click', () => loadSuggestions(false));
 }
@@ -357,7 +366,7 @@ if (filterStatusSelect) {
 if (suggestionsTbody) {
     suggestionsTbody.addEventListener('click', async (e) => {
         const target = e.target;
-        const id = target.dataset.id;
+        const id = target.dataset.id; // ID da sugestão
 
         if (target.classList.contains('respond-suggestion-btn')) {
             const docSnap = await getDoc(doc(db, 'sugestoes', id));
@@ -366,7 +375,8 @@ if (suggestionsTbody) {
                 currentSuggestionBeingResponded = { id: id, ...data };
                 suggestionUserName.textContent = data.nome || 'Anônimo';
                 suggestionMessageText.textContent = data.mensagem;
-                responseTextarea.value = '';
+                responseTextarea.value = ''; // Limpa o campo de resposta
+                // Tenta carregar uma resposta existente, se houver
                 const responseSnap = await getDoc(doc(db, 'sugestoes', id, 'respostas', 'adminResponse'));
                 if (responseSnap.exists()) {
                     responseTextarea.value = responseSnap.data().resposta;
@@ -378,16 +388,17 @@ if (suggestionsTbody) {
         if (target.classList.contains('delete-suggestion-btn')) {
             if (confirm('Tem certeza que deseja excluir esta sugestão? Isso também excluirá qualquer resposta associada.')) {
                 try {
+                    // Excluir a subcoleção de respostas primeiro (se existir)
                     const responsesSnapshot = await getDocs(collection(db, 'sugestoes', id, 'respostas'));
                     const batch = writeBatch(db);
                     responsesSnapshot.forEach((resDoc) => {
                         batch.delete(resDoc.ref);
                     });
-                    await batch.commit();
+                    await batch.commit(); // Executa a exclusão das subcoleções
 
-                    await deleteDoc(doc(db, "sugestoes", id));
+                    await deleteDoc(doc(db, "sugestoes", id)); // Exclui o documento da sugestão principal
                     alert('Sugestão excluída com sucesso!');
-                    loadSuggestions();
+                    loadSuggestions(true); // Recarrega a lista
                 } catch (error) {
                     console.error("Erro ao excluir sugestão:", error);
                     alert("Ocorreu um erro ao excluir a sugestão.");
@@ -397,18 +408,18 @@ if (suggestionsTbody) {
     });
 }
 
-// Lógica do Modal de Resposta (sem alterações)
+// Lógica do Modal de Resposta
 if (closeRespondSuggestionModal) {
     closeRespondSuggestionModal.addEventListener('click', () => {
         respondSuggestionModal.classList.remove('visible');
-        currentSuggestionBeingResponded = null;
+        currentSuggestionBeingResponded = null; // Reseta a sugestão atual
     });
 }
 
 if (cancelResponseBtn) {
     cancelResponseBtn.addEventListener('click', () => {
         respondSuggestionModal.classList.remove('visible');
-        currentSuggestionBeingResponded = null;
+        currentSuggestionBeingResponded = null; // Reseta a sugestão atual
     });
 }
 
@@ -433,24 +444,27 @@ if (sendResponseBtn) {
             const suggestionRef = doc(db, 'sugestoes', currentSuggestionBeingResponded.id);
             const responseRef = doc(db, 'sugestoes', currentSuggestionBeingResponded.id, 'respostas', 'adminResponse');
 
-            const batch = writeBatch(db);
+            const batch = writeBatch(db); // Inicia um batch para operações atômicas
 
+            // Adiciona a operação de setDoc para a resposta ao batch
             batch.set(responseRef, {
                 resposta: responseText,
                 respondidoPor: auth.currentUser.displayName || 'Admin',
                 dataResposta: serverTimestamp()
-            }, { merge: true });
+            }, { merge: true }); // Garante que a resposta seja criada/atualizada
 
+            // Adiciona a operação de updateDoc para a sugestão principal ao batch
             batch.update(suggestionRef, {
                 respondida: true,
+                // Marca a sugestão como "não lida" para o usuário que a enviou
                 [`lidaPor.${currentSuggestionBeingResponded.userId}`]: false
             });
 
-            await batch.commit();
+            await batch.commit(); // Executa todas as operações do batch atomicamente
 
             alert('Resposta enviada com sucesso!');
             respondSuggestionModal.classList.remove('visible');
-            loadSuggestions();
+            loadSuggestions(true); // Recarrega a lista para mostrar o status atualizado
             currentSuggestionBeingResponded = null;
 
         } catch (error) {
@@ -544,6 +558,7 @@ async function loadModeratorRequests(clear = true) {
             moderatorRequestsTbody.appendChild(row);
         });
 
+        // Mostra/oculta o botão "Carregar Mais Solicitações"
         if (newRequests.length < requestsPerPage) {
             loadMoreModeratorRequestsBtn.classList.add('hidden');
         } else {
@@ -560,6 +575,7 @@ async function loadModeratorRequests(clear = true) {
     }
 }
 
+// Event listeners para a seção de solicitações de moderador
 if (loadMoreModeratorRequestsBtn) {
     loadMoreModeratorRequestsBtn.addEventListener('click', () => loadModeratorRequests(false));
 }
@@ -571,25 +587,33 @@ if (filterModeratorStatusSelect) {
 if (moderatorRequestsTbody) {
     moderatorRequestsTbody.addEventListener('click', async (e) => {
         const target = e.target;
-        const id = target.dataset.id; // request ID
-        const userId = target.dataset.userId; // user ID (para o botão Desativar)
+        const requestId = target.dataset.id; // ID da solicitação
+        const userId = target.dataset.userId; // ID do usuário
 
+        // Lógica para aprovar, rejeitar ou desativar moderador
         if (target.classList.contains('approve-request-btn')) {
             if (confirm('Tem certeza que deseja APROVAR esta solicitação?')) {
-                await updateModeratorStatus(id, 'aprovado');
+                await updateModeratorStatus(requestId, 'aprovado');
             }
         } else if (target.classList.contains('reject-request-btn')) {
             if (confirm('Tem certeza que deseja REJEITAR esta solicitação?')) {
-                await updateModeratorStatus(id, 'rejeitado');
+                await updateModeratorStatus(requestId, 'rejeitado');
             }
-        } else if (target.classList.contains('deactivate-moderator-btn')) { // Novo botão
+        } else if (target.classList.contains('deactivate-moderator-btn')) {
+            // Verificação de segurança: garantir que userId não é undefined/null
+            if (!userId) {
+                console.error("Erro: userId não encontrado no dataset do botão Desativar.", target);
+                alert("Não foi possível identificar o usuário para desativar. Recarregue a página e tente novamente.");
+                return;
+            }
             if (confirm('Tem certeza que deseja DESATIVAR o status de moderador para este usuário?')) {
-                await deactivateModerator(userId, id); // Passa o userId e o requestId
+                await deactivateModerator(userId, requestId); // Passa o userId e o requestId
             }
         }
     });
 }
 
+// Função para atualizar o status de uma solicitação de moderador (Aprovar/Rejeitar)
 async function updateModeratorStatus(requestId, status) {
     const requestRef = doc(db, 'solicitacoesModerador', requestId);
     try {
@@ -599,16 +623,16 @@ async function updateModeratorStatus(requestId, status) {
             return;
         }
         const requestData = requestDoc.data();
-        const userId = requestData.userId;
+        const userId = requestData.userId; // O ID do usuário associado à solicitação
         const userRef = doc(db, 'usuarios', userId);
 
         const batch = writeBatch(db);
 
-        // Atualizar o status da solicitação
+        // 1. Atualizar o status da solicitação
         batch.update(requestRef, { status: status });
 
+        // 2. Atualizar o documento do usuário com base no status
         if (status === 'aprovado') {
-            // Se aprovado, atualiza o usuário para moderador
             batch.update(userRef, {
                 moderador: true,
                 plano: requestData.plano,
@@ -618,8 +642,9 @@ async function updateModeratorStatus(requestId, status) {
             alert(`Solicitação de ${requestData.userName} APROVADA! Usuário agora é moderador.`);
         } else if (status === 'rejeitado') {
             alert(`Solicitação de ${requestData.userName} REJEITADA.`);
-            // Se rejeitado, podemos remover o plano e o status de moderador do usuário
-            // Isso é útil caso ele já tenha sido moderador e tenha solicitado novamente
+            // Se rejeitado, também resetamos o status de moderador do usuário, caso ele já fosse.
+            // Isso evita situações onde um moderador que tinha plano expirado/revogado e solicitou de novo
+            // não fica "preso" como moderador sem plano.
             batch.update(userRef, {
                 moderador: false,
                 plano: null,
@@ -628,8 +653,8 @@ async function updateModeratorStatus(requestId, status) {
             });
         }
 
-        await batch.commit();
-        loadModeratorRequests(true); // Recarrega a lista
+        await batch.commit(); // Executa as operações em batch
+        loadModeratorRequests(true); // Recarrega a lista de solicitações
     } catch (error) {
         console.error(`Erro ao ${status} solicitação de moderador:`, error);
         alert(`Ocorreu um erro ao ${status} a solicitação.`);
@@ -638,60 +663,36 @@ async function updateModeratorStatus(requestId, status) {
 
 // NOVA FUNÇÃO: Desativar Moderador
 async function deactivateModerator(userId, requestId) {
-    if (!userId) { // Adiciona esta verificação
-        console.error("Erro: userId é indefinido ou nulo ao desativar moderador.");
-        alert("Não foi possível desativar o moderador. ID de usuário inválido.");
+    // Verificação adicional, embora já feita no event listener
+    if (!userId) {
+        console.error("Erro interno: userId é indefinido ou nulo na função deactivateModerator.");
+        alert("Erro interno: Não foi possível processar a desativação.");
         return;
     }
+
     const userRef = doc(db, 'usuarios', userId);
-    const requestRef = doc(db, 'solicitacoesModerador', requestId);
+    const requestRef = doc(db, 'solicitacoesModerador', requestId); // Referência à solicitação de moderador original
 
     try {
         const batch = writeBatch(db);
 
-        // 1. Resetar o status de moderador do usuário
+        // 1. Resetar o status de moderador do usuário no documento de usuário
         batch.update(userRef, {
             moderador: false,
             plano: null,
-            gruposCriados: [],
+            gruposCriados: [], // Importante para zerar a contagem de grupos criados e liberar o limite
             dataAtivacao: null
         });
 
-        // 2. Atualizar o status da solicitação para 'rejeitado' ou 'desativado'
-        batch.update(requestRef, { status: 'rejeitado' });
+        // 2. Atualizar o status da solicitação original para 'rejeitado'
+        // Isso marca a solicitação como tratada e reflete a desativação.
+        batch.update(requestRef, { status: 'rejeitado' }); 
 
-        await batch.commit();
+        await batch.commit(); // Executa as operações atomicamente
         alert('Status de moderador desativado com sucesso!');
-        loadModeratorRequests(true);
+        loadModeratorRequests(true); // Recarrega a lista de solicitações para refletir a mudança
     } catch (error) {
         console.error("Erro ao desativar moderador:", error);
         alert("Não foi possível desativar o moderador.");
     }
-}
-
-// ... (código existente) ...
-
-// No event listener moderatorRequestsTbody (linha ~587)
-if (moderatorRequestsTbody) {
-    moderatorRequestsTbody.addEventListener('click', async (e) => {
-        const target = e.target;
-        const requestId = target.dataset.id; // request ID
-        const userId = target.dataset.userId; // user ID
-
-        // Verifica se o userId é válido antes de prosseguir
-        if (target.classList.contains('deactivate-moderator-btn')) {
-            if (!userId) { // Adiciona esta verificação
-                alert("Não foi possível identificar o usuário. Tente recarregar a página.");
-                console.error("Erro: userId não encontrado no dataset do botão Desativar.", target);
-                return;
-            }
-            if (confirm('Tem certeza que deseja DESATIVAR o status de moderador para este usuário?')) {
-                await deactivateModerator(userId, requestId);
-            }
-        } else if (target.classList.contains('approve-request-btn')) {
-            // ... (seu código existente) ...
-        } else if (target.classList.contains('reject-request-btn')) {
-            // ... (seu código existente) ...
-        }
-    });
 }
