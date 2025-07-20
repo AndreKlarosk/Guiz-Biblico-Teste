@@ -1,18 +1,20 @@
 // utils.js
 
-let customAlertModalElement; // Renomeado para evitar confusão com o nome da função showAlert
+let customAlertModalElement;
 let customAlertTitleElement;
 let customAlertMessageElement;
 let customAlertOkBtnElement;
 let closeCustomAlertModalElement;
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Obtenha as referências aos elementos do modal APENAS quando o DOM estiver pronto
     customAlertModalElement = document.getElementById('custom-alert-modal');
     customAlertTitleElement = document.getElementById('custom-alert-title');
     customAlertMessageElement = document.getElementById('custom-alert-message');
     customAlertOkBtnElement = document.getElementById('custom-alert-ok-btn');
     closeCustomAlertModalElement = document.getElementById('close-custom-alert-modal');
 
+    // Agora que os elementos foram obtidos, adicione os event listeners
     if (customAlertOkBtnElement) {
         customAlertOkBtnElement.addEventListener('click', () => {
             if (customAlertModalElement) customAlertModalElement.classList.remove('visible');
@@ -24,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     window.addEventListener('click', (event) => {
+        // Verifica se o clique foi diretamente no backdrop do modal
         if (event.target === customAlertModalElement) {
             if (customAlertModalElement) customAlertModalElement.classList.remove('visible');
         }
