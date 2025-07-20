@@ -1,7 +1,7 @@
 import { auth, db } from './firebase.js';
 // Garanta que `doc` está na lista de imports explicitamente para ser usado
 import { doc, getDoc, updateDoc, deleteDoc, arrayUnion, deleteField, arrayRemove, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"; // <-- NOVA IMPORTAÇÃO
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"; // Importa onAuthStateChanged
 import { showAlert } from './utils.js'; // Importa o showAlert
 
 // --- Elementos da UI ---
@@ -48,7 +48,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     groupId = params.get('id');
     if (!groupId) { showNotFound(); return; }
-    onAuthStateChanged(auth, (user) => { // Linha 50
+    onAuthStateChanged(auth, (user) => { 
         currentUser = user;
         loadGroupData();
     });
@@ -258,9 +258,6 @@ if (chatForm) {
         // Verificar se o usuário está silenciado
         const userDoc = await getDoc(doc(db, 'usuarios', currentUser.uid));
         const userData = userDoc.data();
-        // A regra `request.time` é um Timestamp do Firestore. Comparar com `new Date()` no JS exige cuidado.
-        // A comparação `silenciadoAte > request.time` é feita nas regras do Firestore.
-        // Aqui no cliente, apenas verificamos se a data de silenciamento já passou.
         if (userData.silenciadoAte && userData.silenciadoAte.toDate() > new Date()) {
             showAlert("Você está silenciado e não pode enviar mensagens no momento. Tente novamente mais tarde.");
             chatInput.value = '';
@@ -281,11 +278,11 @@ if (chatForm) {
                 silenced: false, // Garante que a mensagem não é silenciada por padrão
                 systemMessage: false // Garante que não é uma mensagem de sistema por padrão
             });
-            showAlert("Mensagem enviada com sucesso!", "Chat do Grupo"); // Alerta de sucesso
+            showAlert("Mensagem enviada com sucesso!", "Chat do Grupo");
             chatInput.value = '';
         } catch (error) {
             console.error("Erro ao enviar mensagem:", error);
-            showAlert("Não foi possível enviar a sua mensagem.", "Erro no Chat"); // Substituído alert
+            showAlert("Não foi possível enviar a sua mensagem.", "Erro no Chat");
         } finally {
             chatInput.disabled = false;
             chatInput.focus();
