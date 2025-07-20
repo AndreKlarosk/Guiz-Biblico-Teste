@@ -115,6 +115,23 @@
                 </table>
             </div>
             <button id="load-more-moderator-requests-btn" class="btn hidden" style="margin-top: 1rem;">Carregar Mais Solicitações</button>
+            
+            <h2 style="margin-top: 3rem;">Gerenciamento de Grupos</h2>
+            <div class="admin-form" style="padding-top: 0; background-color: transparent; border: none;">
+                <label for="filter-group-search">Pesquisar Grupo:</label>
+                <input type="text" id="filter-group-search" placeholder="Nome do grupo ou ID do criador">
+            </div>
+            <div class="table-container">
+                <table id="admin-groups-table">
+                    <thead>
+                        <tr><th>Nome do Grupo</th><th>Criador</th><th>Membros</th><th>Dificuldade</th><th>Ações</th></tr>
+                    </thead>
+                    <tbody id="admin-groups-tbody">
+                        <tr><td colspan="5">Carregando grupos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <button id="load-more-admin-groups-btn" class="btn hidden" style="margin-top: 1rem;">Carregar Mais Grupos</button>
 
         </main>
         <div id="auth-guard-message"><h2>Verificando permissões...</h2></div>
@@ -129,6 +146,33 @@
             <textarea id="response-textarea" rows="6" maxlength="500" placeholder="Escreva sua resposta aqui…"></textarea>
             <button id="send-response-btn" class="btn">Enviar Resposta</button>
             <button id="cancel-response-btn" class="btn btn-secondary">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="admin-group-details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-admin-group-details-modal">&times;</span>
+            <div class="group-details-header">
+                <h3 id="admin-group-detail-name">Detalhes do Grupo</h3>
+                <p>Criado por: <span id="admin-group-detail-creator"></span></p>
+                <p>Dificuldade: <strong id="admin-group-detail-difficulty" style="text-transform: capitalize;"></strong></p>
+            </div>
+            <div class="details-sections">
+                <div class="details-section-left">
+                    <h4>Membros e Ranking</h4>
+                    <table class="admin-ranking-table">
+                        <thead>
+                            <tr><th>Membro</th><th>Pontos</th><th>Ações</th></tr>
+                        </thead>
+                        <tbody id="admin-group-detail-ranking-tbody"></tbody>
+                    </table>
+                </div>
+                <div class="details-section-right">
+                    <h4>Chat do Grupo</h4>
+                    <div id="admin-group-detail-chat-messages" class="admin-chat-messages"></div>
+                </div>
+            </div>
+            <button id="close-admin-group-details-btn" class="btn btn-secondary">Fechar</button>
         </div>
     </div>
 
