@@ -1,6 +1,6 @@
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, query, orderBy, limit, startAfter, where, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"; //
+import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, query, orderBy, limit, startAfter, where, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // --- Elementos da UI ---
 const adminContent = document.getElementById('admin-content');
@@ -29,20 +29,20 @@ const importFileInput = document.getElementById('import-file');
 // Elementos da seção de sugestões
 const suggestionsTbody = document.getElementById('suggestions-tbody');
 const loadMoreSuggestionsBtn = document.getElementById('load-more-suggestions-btn');
-const filterStatusSelect = document.getElementById('filter-status'); //
+const filterStatusSelect = document.getElementById('filter-status');
 
 // Elementos do Modal de Resposta à Sugestão
-const respondSuggestionModal = document.getElementById('respond-suggestion-modal'); //
-const closeRespondSuggestionModal = document.getElementById('close-respond-suggestion-modal'); //
-const suggestionUserName = document.getElementById('suggestion-user-name'); //
-const suggestionMessageText = document.getElementById('suggestion-message-text'); //
-const responseTextarea = document.getElementById('response-textarea'); //
-const sendResponseBtn = document.getElementById('send-response-btn'); //
-const cancelResponseBtn = document.getElementById('cancel-response-btn'); //
+const respondSuggestionModal = document.getElementById('respond-suggestion-modal');
+const closeRespondSuggestionModal = document.getElementById('close-respond-suggestion-modal');
+const suggestionUserName = document.getElementById('suggestion-user-name');
+const suggestionMessageText = document.getElementById('suggestion-message-text');
+const responseTextarea = document.getElementById('response-textarea');
+const sendResponseBtn = document.getElementById('send-response-btn');
+const cancelResponseBtn = document.getElementById('cancel-response-btn');
 
 const suggestionsPerPage = 10;
 let lastVisibleSuggestion = null;
-let currentSuggestionBeingResponded = null; // Para armazenar a sugestão atual
+let currentSuggestionBeingResponded = null;
 
 // Elementos da nova seção de solicitações de moderador
 const moderatorRequestsTbody = document.getElementById('moderator-requests-tbody');
@@ -67,8 +67,8 @@ onAuthStateChanged(auth, async (user) => {
             authGuardMessage.classList.add('hidden');
             adminContent.classList.remove('hidden');
             loadQuestions();
-            loadSuggestions(); // Carregar sugestões quando o admin logar
-            loadModeratorRequests(); // Carregar solicitações de moderador
+            loadSuggestions();
+            loadModeratorRequests();
         } else {
             authGuardMessage.innerHTML = '<h2>Acesso Negado</h2><p>Você não tem permissão para acessar esta página.</p>';
         }
@@ -77,7 +77,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// --- Lógica CRUD de Perguntas ---
+// --- Lógica CRUD de Perguntas (sem alterações) ---
 async function loadQuestions() {
     questionsTbody.innerHTML = '<tr><td colspan="3">Carregando...</td></tr>';
     try {
@@ -268,7 +268,7 @@ importBtn.addEventListener('click', () => {
     reader.readAsText(file);
 });
 
-// --- Lógica de Sugestões ---
+// --- Lógica de Sugestões (sem alterações) ---
 async function loadSuggestions(clear = true) {
     if (clear) {
         suggestionsTbody.innerHTML = '<tr><td colspan="5">Carregando sugestões...</td></tr>';
@@ -280,24 +280,24 @@ async function loadSuggestions(clear = true) {
         const statusFilter = filterStatusSelect.value;
 
         if (statusFilter === 'pending') {
-            q = query(collection(db, "sugestoes"), where("respondida", "==", false), orderBy("data", "desc"), limit(suggestionsPerPage)); //
+            q = query(collection(db, "sugestoes"), where("respondida", "==", false), orderBy("data", "desc"), limit(suggestionsPerPage));
         } else if (statusFilter === 'responded') {
-            q = query(collection(db, "sugestoes"), where("respondida", "==", true), orderBy("data", "desc"), limit(suggestionsPerPage)); //
+            q = query(collection(db, "sugestoes"), where("respondida", "==", true), orderBy("data", "desc"), limit(suggestionsPerPage));
         } else {
-            q = query(collection(db, "sugestoes"), orderBy("data", "desc"), limit(suggestionsPerPage)); //
+            q = query(collection(db, "sugestoes"), orderBy("data", "desc"), limit(suggestionsPerPage));
         }
         
-        if (lastVisibleSuggestion && clear === false) { // Only apply startAfter if not a fresh load
+        if (lastVisibleSuggestion && clear === false) {
             if (statusFilter === 'pending') {
-                q = query(collection(db, "sugestoes"), where("respondida", "==", false), orderBy("data", "desc"), startAfter(lastVisibleSuggestion), limit(suggestionsPerPage)); //
+                q = query(collection(db, "sugestoes"), where("respondida", "==", false), orderBy("data", "desc"), startAfter(lastVisibleSuggestion), limit(suggestionsPerPage));
             } else if (statusFilter === 'responded') {
-                q = query(collection(db, "sugestoes"), where("respondida", "==", true), orderBy("data", "desc"), startAfter(lastVisibleSuggestion), limit(suggestionsPerPage)); //
+                q = query(collection(db, "sugestoes"), where("respondida", "==", true), orderBy("data", "desc"), startAfter(lastVisibleSuggestion), limit(suggestionsPerPage));
             } else {
-                q = query(collection(db, "sugestoes"), orderBy("data", "desc"), startAfter(lastVisibleSuggestion), limit(suggestionsPerPage)); //
+                q = query(collection(db, "sugestoes"), orderBy("data", "desc"), startAfter(lastVisibleSuggestion), limit(suggestionsPerPage));
             }
         }
 
-        const querySnapshot = await getDocs(q); //
+        const querySnapshot = await getDocs(q);
         const newSuggestions = [];
         querySnapshot.forEach((doc) => {
             newSuggestions.push({ id: doc.id, ...doc.data() });
@@ -315,9 +315,8 @@ async function loadSuggestions(clear = true) {
 
         newSuggestions.forEach((suggestion) => {
             const row = document.createElement('tr');
-            // Check if 'data' is a Firestore Timestamp or other type
-            const date = suggestion.data && typeof suggestion.data.toDate === 'function' ? suggestion.data.toDate().toLocaleString() : 'N/A'; //
-            const status = suggestion.respondida ? 'Respondida' : 'Pendente'; //
+            const date = suggestion.data && typeof suggestion.data.toDate === 'function' ? suggestion.data.toDate().toLocaleString() : 'N/A';
+            const status = suggestion.respondida ? 'Respondida' : 'Pendente';
             row.innerHTML = `
                 <td>${suggestion.nome || 'Anônimo'}</td>
                 <td>${suggestion.mensagem}</td>
@@ -352,7 +351,7 @@ if (loadMoreSuggestionsBtn) {
 }
 
 if (filterStatusSelect) {
-    filterStatusSelect.addEventListener('change', () => loadSuggestions(true)); //
+    filterStatusSelect.addEventListener('change', () => loadSuggestions(true));
 }
 
 if (suggestionsTbody) {
@@ -360,111 +359,106 @@ if (suggestionsTbody) {
         const target = e.target;
         const id = target.dataset.id;
 
-        if (target.classList.contains('respond-suggestion-btn')) { //
-            const docSnap = await getDoc(doc(db, 'sugestoes', id)); //
-            if (docSnap.exists()) { //
-                const data = docSnap.data(); //
-                currentSuggestionBeingResponded = { id: id, ...data }; //
-                suggestionUserName.textContent = data.nome || 'Anônimo'; //
-                suggestionMessageText.textContent = data.mensagem; //
-                responseTextarea.value = ''; // Limpa o campo de resposta //
-                // Tenta carregar uma resposta existente, se houver
-                const responseSnap = await getDoc(doc(db, 'sugestoes', id, 'respostas', 'adminResponse')); //
-                if (responseSnap.exists()) { //
-                    responseTextarea.value = responseSnap.data().resposta; //
+        if (target.classList.contains('respond-suggestion-btn')) {
+            const docSnap = await getDoc(doc(db, 'sugestoes', id));
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                currentSuggestionBeingResponded = { id: id, ...data };
+                suggestionUserName.textContent = data.nome || 'Anônimo';
+                suggestionMessageText.textContent = data.mensagem;
+                responseTextarea.value = '';
+                const responseSnap = await getDoc(doc(db, 'sugestoes', id, 'respostas', 'adminResponse'));
+                if (responseSnap.exists()) {
+                    responseTextarea.value = responseSnap.data().resposta;
                 }
-                respondSuggestionModal.classList.add('visible'); //
+                respondSuggestionModal.classList.add('visible');
             }
         }
         
-        if (target.classList.contains('delete-suggestion-btn')) { //
-            if (confirm('Tem certeza que deseja excluir esta sugestão? Isso também excluirá qualquer resposta associada.')) { //
+        if (target.classList.contains('delete-suggestion-btn')) {
+            if (confirm('Tem certeza que deseja excluir esta sugestão? Isso também excluirá qualquer resposta associada.')) {
                 try {
-                    // Excluir a subcoleção de respostas primeiro (se existir)
-                    const responsesSnapshot = await getDocs(collection(db, 'sugestoes', id, 'respostas')); //
-                    const batch = writeBatch(db); //
-                    responsesSnapshot.forEach((resDoc) => { //
-                        batch.delete(resDoc.ref); //
+                    const responsesSnapshot = await getDocs(collection(db, 'sugestoes', id, 'respostas'));
+                    const batch = writeBatch(db);
+                    responsesSnapshot.forEach((resDoc) => {
+                        batch.delete(resDoc.ref);
                     });
-                    await batch.commit(); // A sala será fechada para todos via onSnapshot //
+                    await batch.commit();
 
-                    await deleteDoc(doc(db, "sugestoes", id)); //
-                    alert('Sugestão excluída com sucesso!'); //
-                    loadSuggestions(); // Recarrega a lista //
+                    await deleteDoc(doc(db, "sugestoes", id));
+                    alert('Sugestão excluída com sucesso!');
+                    loadSuggestions();
                 } catch (error) {
-                    console.error("Erro ao excluir sugestão:", error); //
-                    alert("Ocorreu um erro ao excluir a sugestão."); //
+                    console.error("Erro ao excluir sugestão:", error);
+                    alert("Ocorreu um erro ao excluir a sugestão.");
                 }
             }
         }
     });
 }
 
-// Lógica do Modal de Resposta
-if (closeRespondSuggestionModal) { //
-    closeRespondSuggestionModal.addEventListener('click', () => { //
-        respondSuggestionModal.classList.remove('visible'); //
-        currentSuggestionBeingResponded = null; //
+// Lógica do Modal de Resposta (sem alterações)
+if (closeRespondSuggestionModal) {
+    closeRespondSuggestionModal.addEventListener('click', () => {
+        respondSuggestionModal.classList.remove('visible');
+        currentSuggestionBeingResponded = null;
     });
 }
 
-if (cancelResponseBtn) { //
-    cancelResponseBtn.addEventListener('click', () => { //
-        respondSuggestionModal.classList.remove('visible'); //
-        currentSuggestionBeingResponded = null; //
+if (cancelResponseBtn) {
+    cancelResponseBtn.addEventListener('click', () => {
+        respondSuggestionModal.classList.remove('visible');
+        currentSuggestionBeingResponded = null;
     });
 }
 
-if (sendResponseBtn) { //
-    sendResponseBtn.addEventListener('click', async () => { //
-        if (!currentSuggestionBeingResponded) return; //
+if (sendResponseBtn) {
+    sendResponseBtn.addEventListener('click', async () => {
+        if (!currentSuggestionBeingResponded) return;
 
-        const responseText = responseTextarea.value.trim(); //
-        if (!responseText) { //
-            alert('Por favor, escreva uma resposta.'); //
+        const responseText = responseTextarea.value.trim();
+        if (!responseText) {
+            alert('Por favor, escreva uma resposta.');
             return;
         }
-        if (responseText.length > 500) { //
-            alert('A resposta não pode ter mais de 500 caracteres.'); //
+        if (responseText.length > 500) {
+            alert('A resposta não pode ter mais de 500 caracteres.');
             return;
         }
 
-        sendResponseBtn.disabled = true; //
-        sendResponseBtn.textContent = 'Enviando...'; //
+        sendResponseBtn.disabled = true;
+        sendResponseBtn.textContent = 'Enviando...';
 
         try {
-            const suggestionRef = doc(db, 'sugestoes', currentSuggestionBeingResponded.id); //
-            const responseRef = doc(db, 'sugestoes', currentSuggestionBeingResponded.id, 'respostas', 'adminResponse'); //
+            const suggestionRef = doc(db, 'sugestoes', currentSuggestionBeingResponded.id);
+            const responseRef = doc(db, 'sugestoes', currentSuggestionBeingResponded.id, 'respostas', 'adminResponse');
 
-            const batch = writeBatch(db); // Inicia um batch //
+            const batch = writeBatch(db);
 
-            // Adiciona a operação de setDoc para a resposta ao batch
-            batch.set(responseRef, { //
-                resposta: responseText, //
-                respondidoPor: auth.currentUser.displayName || 'Admin', //
-                dataResposta: serverTimestamp() //
-            }, { merge: true }); // Garante que a resposta seja criada/atualizada //
+            batch.set(responseRef, {
+                resposta: responseText,
+                respondidoPor: auth.currentUser.displayName || 'Admin',
+                dataResposta: serverTimestamp()
+            }, { merge: true });
 
-            // Adiciona a operação de updateDoc para a sugestão principal ao batch
-            batch.update(suggestionRef, { //
-                respondida: true, //
-                // Marca a sugestão como "não lida" para o usuário que a enviou
-                [`lidaPor.${currentSuggestionBeingResponded.userId}`]: false //
+            batch.update(suggestionRef, {
+                respondida: true,
+                [`lidaPor.${currentSuggestionBeingResponded.userId}`]: false
             });
 
-            await batch.commit(); // Executa todas as operações do batch atomicamente //
+            await batch.commit();
 
-            alert('Resposta enviada com sucesso!'); //
-            respondSuggestionModal.classList.remove('visible'); //
-            loadSuggestions(); // Recarrega a lista para mostrar o status atualizado //
-            currentSuggestionBeingResponded = null; //
+            alert('Resposta enviada com sucesso!');
+            respondSuggestionModal.classList.remove('visible');
+            loadSuggestions();
+            currentSuggestionBeingResponded = null;
 
         } catch (error) {
-            console.error("Erro ao enviar resposta:", error); // Isso imprimirá o erro detalhado //
-            alert("Ocorreu um erro ao enviar a resposta."); //
+            console.error("Erro ao enviar resposta:", error);
+            alert("Ocorreu um erro ao enviar a resposta.");
         } finally {
-            sendResponseBtn.disabled = false; //
-            sendResponseBtn.textContent = 'Enviar Resposta'; //
+            sendResponseBtn.disabled = false;
+            sendResponseBtn.textContent = 'Enviar Resposta';
         }
     });
 }
@@ -526,16 +520,24 @@ async function loadModeratorRequests(clear = true) {
             const statusColor = request.status === 'aprovado' ? 'color: green;' : (request.status === 'rejeitado' ? 'color: red;' : 'color: orange;');
             const statusText = request.status.charAt(0).toUpperCase() + request.status.slice(1);
 
+            // Determina a visibilidade e estado dos botões
+            const isApproved = request.status === 'aprovado';
+            const approveBtnDisabled = isApproved ? 'disabled' : '';
+            const rejectBtnDisabled = isApproved ? 'disabled' : ''; // Desabilita rejeitar se já aprovado
+            const deactivateBtnHidden = isApproved ? '' : 'hidden'; // Mostra desativar APENAS se aprovado
+            
             const actionsHtml = `
-                <button class="btn approve-request-btn" data-id="${request.id}" ${request.status !== 'pendente' ? 'disabled' : ''}>Aprovar</button>
-                <button class="btn reject-request-btn" data-id="${request.id}" style="background: var(--danger-color);" ${request.status !== 'pendente' ? 'disabled' : ''}>Rejeitar</button>
+                <button class="btn approve-request-btn" data-id="${request.id}" ${approveBtnDisabled}>Aprovar</button>
+                <button class="btn reject-request-btn" data-id="${request.id}" style="background: var(--danger-color);" ${rejectBtnDisabled}>Rejeitar</button>
+                <button class="btn deactivate-moderator-btn ${deactivateBtnHidden}" data-user-id="${request.userId}" data-request-id="${request.id}" style="background: #6c757d;">Desativar</button>
             `;
 
             row.innerHTML = `
                 <td>${request.userName || 'Anônimo'}</td>
                 <td>${request.plano}</td>
                 <td>${request.whatsapp || 'N/A'}</td>
-                <td>${request.comprovanteURL ? `<a href="${request.comprovanteURL}" target="_blank">Ver Comprovante</a>` : 'N/A'}</td> <td>${date}</td>
+                <td>${request.comprovanteURL ? `<a href="${request.comprovanteURL}" target="_blank">Ver Comprovante</a>` : 'N/A'}</td>
+                <td>${date}</td>
                 <td style="${statusColor}">${statusText}</td>
                 <td class="actions-cell">${actionsHtml}</td>
             `;
@@ -569,7 +571,8 @@ if (filterModeratorStatusSelect) {
 if (moderatorRequestsTbody) {
     moderatorRequestsTbody.addEventListener('click', async (e) => {
         const target = e.target;
-        const id = target.dataset.id;
+        const id = target.dataset.id; // request ID
+        const userId = target.dataset.userId; // user ID (para o botão Desativar)
 
         if (target.classList.contains('approve-request-btn')) {
             if (confirm('Tem certeza que deseja APROVAR esta solicitação?')) {
@@ -578,6 +581,10 @@ if (moderatorRequestsTbody) {
         } else if (target.classList.contains('reject-request-btn')) {
             if (confirm('Tem certeza que deseja REJEITAR esta solicitação?')) {
                 await updateModeratorStatus(id, 'rejeitado');
+            }
+        } else if (target.classList.contains('deactivate-moderator-btn')) { // Novo botão
+            if (confirm('Tem certeza que deseja DESATIVAR o status de moderador para este usuário?')) {
+                await deactivateModerator(userId, id); // Passa o userId e o requestId
             }
         }
     });
@@ -611,6 +618,14 @@ async function updateModeratorStatus(requestId, status) {
             alert(`Solicitação de ${requestData.userName} APROVADA! Usuário agora é moderador.`);
         } else if (status === 'rejeitado') {
             alert(`Solicitação de ${requestData.userName} REJEITADA.`);
+            // Se rejeitado, podemos remover o plano e o status de moderador do usuário
+            // Isso é útil caso ele já tenha sido moderador e tenha solicitado novamente
+            batch.update(userRef, {
+                moderador: false,
+                plano: null,
+                gruposCriados: [],
+                dataAtivacao: null
+            });
         }
 
         await batch.commit();
@@ -618,5 +633,33 @@ async function updateModeratorStatus(requestId, status) {
     } catch (error) {
         console.error(`Erro ao ${status} solicitação de moderador:`, error);
         alert(`Ocorreu um erro ao ${status} a solicitação.`);
+    }
+}
+
+// NOVA FUNÇÃO: Desativar Moderador
+async function deactivateModerator(userId, requestId) {
+    const userRef = doc(db, 'usuarios', userId);
+    const requestRef = doc(db, 'solicitacoesModerador', requestId);
+
+    try {
+        const batch = writeBatch(db);
+
+        // 1. Resetar o status de moderador do usuário
+        batch.update(userRef, {
+            moderador: false,
+            plano: null,
+            gruposCriados: [], // Importante para resetar a contagem de grupos
+            dataAtivacao: null
+        });
+
+        // 2. Atualizar o status da solicitação para 'rejeitado' ou 'desativado' (opcional, pode ser 'rejeitado')
+        batch.update(requestRef, { status: 'rejeitado' }); // Ou crie um novo status 'desativado'
+
+        await batch.commit();
+        alert('Status de moderador desativado com sucesso!');
+        loadModeratorRequests(true); // Recarrega a lista
+    } catch (error) {
+        console.error("Erro ao desativar moderador:", error);
+        alert("Não foi possível desativar o moderador.");
     }
 }
