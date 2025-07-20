@@ -651,56 +651,89 @@ if (filterModeratorStatusSelect) {
 if (moderatorRequestsTbody) {
     moderatorRequestsTbody.addEventListener('click', async (e) => {
         const target = e.target;
-        const requestId = target.dataset.requestId; // CORREÇÃO: Usando data-request-id
-        const userId = target.dataset.userId; // ID do usuário
+        const requestId = target.dataset.id; // ID da solicitação (usado por Aprovar e Rejeitar)
+        const userIdFromDataset = target.dataset.userId; // ID do usuário (usado apenas por Desativar)
 
         // Lógica para aprovar, rejeitar ou desativar moderador
         if (target.classList.contains('approve-request-btn')) {
             console.log("Approve request button clicked for request ID:", requestId);
+            // Antes de chamar updateModeratorStatus, vamos buscar o userId da solicitação
+            if (!requestId) {
+                console.error("Erro: ID da solicitação é indefinido ao tentar aprovar.");
+                alert("Não foi possível aprovar a solicitação. ID inválido.");
+                return;
+            }
+            // Obter os dados da solicitação para extrair o userId
+            const requestDoc = await getDoc(doc(db, 'solicitacoesModerador', requestId));
+            if (!requestDoc.exists()) {
+                alert("Solicitação não encontrada para aprovação.");
+                return;
+            }
+            const userId = requestDoc.data().userId; // Obtendo o userId da solicitação
+            
+            if (!userId) {
+                console.error(`Erro: userId ausente na solicitação ${requestId}. Não é possível aprovar.`);
+                alert("Erro: ID de usuário ausente na solicitação. Verifique os dados no Firestore.");
+                return;
+            }
+
             if (confirm('Tem certeza que deseja APROVAR esta solicitação?')) {
-                await updateModeratorStatus(requestId, 'aprovado');
+                await updateModeratorStatus(requestId, 'aprovado', userId); // Passar o userId
             }
         } else if (target.classList.contains('reject-request-btn')) {
             console.log("Reject request button clicked for request ID:", requestId);
+             // Antes de chamar updateModeratorStatus, vamos buscar o userId da solicitação
+             if (!requestId) {
+                console.error("Erro: ID da solicitação é indefinido ao tentar rejeitar.");
+                alert("Não foi possível rejeitar a solicitação. ID inválido.");
+                return;
+            }
+            // Obter os dados da solicitação para extrair o userId
+            const requestDoc = await getDoc(doc(db, 'solicitacoesModerador', requestId));
+            if (!requestDoc.exists()) {
+                alert("Solicitação não encontrada para rejeição.");
+                return;
+            }
+            const userId = requestDoc.data().userId; // Obtendo o userId da solicitação
+
+            if (!userId) {
+                console.error(`Erro: userId ausente na solicitação ${requestId}. Não é possível rejeitar.`);
+                alert("Erro: ID de usuário ausente na solicitação. Verifique os dados no Firestore.");
+                return;
+            }
+
             if (confirm('Tem certeza que deseja REJEITAR esta solicitação?')) {
-                await updateModeratorStatus(requestId, 'rejeitado');
+                await updateModeratorStatus(requestId, 'rejeitado', userId); // Passar o userId
             }
         } else if (target.classList.contains('deactivate-moderator-btn')) {
-            console.log("Deactivate moderator button clicked for user ID:", userId, "Request ID:", requestId);
-            // Verificação de segurança: garantir que userId não é undefined/null
-            if (!userId) {
+            // Este bloco já está OK na versão anterior, pois o userId já vinha do data-user-id
+            console.log("Deactivate moderator button clicked for user ID:", userIdFromDataset, "Request ID:", requestId);
+            if (!userIdFromDataset) { // Usar userIdFromDataset
                 console.error("Erro: userId não encontrado no dataset do botão Desativar. Target element:", target);
                 alert("Não foi possível identificar o usuário para desativar. Recarregue a página e tente novamente.");
                 return;
             }
             if (confirm('Tem certeza que deseja DESATIVAR o status de moderador para este usuário?')) {
-                await deactivateModerator(userId, requestId); // Passa o userId e o requestId
+                await deactivateModerator(userIdFromDataset, requestId); // Passa o userIdFromDataset
             }
         }
     });
 }
 
 // Função para atualizar o status de uma solicitação de moderador (Aprovar/Rejeitar)
-async function updateModeratorStatus(requestId, status) {
-    console.log(`Updating moderator status for request ID: ${requestId} to ${status}.`);
+// Agora, updateModeratorStatus espera o userId como um terceiro argumento
+async function updateModeratorStatus(requestId, status, userId) { // Adicionado userId aqui
+    console.log(`Updating moderator status for request ID: ${requestId} to ${status}. Target User ID: ${userId}`);
+    // Verifica se o userId é válido antes de prosseguir
+    if (!userId) {
+        console.error(`Erro: userId é inválido na chamada de updateModeratorStatus para requisição ${requestId}.`);
+        alert("Erro interno: ID de usuário inválido para atualização.");
+        return;
+    }
     const requestRef = doc(db, 'solicitacoesModerador', requestId);
-    try {
-        const requestDoc = await getDoc(requestRef);
-        if (!requestDoc.exists()) {
-            alert("Solicitação não encontrada.");
-            console.warn("Request document not found for ID:", requestId);
-            return;
-        }
-        const requestData = requestDoc.data();
-        const userId = requestData.userId; // O ID do usuário associado à solicitação
-        
-        if (!userId) { // Adiciona uma verificação extra para userId
-            console.error(`Erro: userId ausente na solicitação ${requestId}. Não é possível atualizar o usuário.`);
-            alert("Erro: ID de usuário ausente na solicitação.");
-            return;
-        }
-        const userRef = doc(db, 'usuarios', userId);
+    const userRef = doc(db, 'usuarios', userId); // userRef agora usa o userId passado
 
+    try {
         const batch = writeBatch(db);
 
         // 1. Atualizar o status da solicitação
@@ -709,16 +742,18 @@ async function updateModeratorStatus(requestId, status) {
 
         // 2. Atualizar o documento do usuário com base no status
         if (status === 'aprovado') {
+            const requestDocData = (await getDoc(requestRef)).data(); // Pega dados da solicitação novamente para o plano
             batch.update(userRef, {
                 moderador: true,
-                plano: requestData.plano,
+                plano: requestDocData.plano, // Usa o plano da solicitação
                 gruposCriados: [], // Inicializa como vazio
                 dataAtivacao: serverTimestamp()
             });
-            alert(`Solicitação de ${requestData.userName} APROVADA! Usuário agora é moderador.`);
-            console.log(`User ${userId} (Moderator) status set to true, plan ${requestData.plano}.`);
+            alert(`Solicitação de ${requestDocData.userName} APROVADA! Usuário agora é moderador.`);
+            console.log(`User ${userId} (Moderator) status set to true, plan ${requestDocData.plano}.`);
         } else if (status === 'rejeitado') {
-            alert(`Solicitação de ${requestData.userName} REJEITADA.`);
+            const requestDocData = (await getDoc(requestRef)).data(); // Pega dados da solicitação novamente para o nome
+            alert(`Solicitação de ${requestDocData.userName} REJEITADA.`);
             batch.update(userRef, {
                 moderador: false,
                 plano: null,
@@ -728,7 +763,7 @@ async function updateModeratorStatus(requestId, status) {
             console.log(`User ${userId} (Moderator) status set to false.`);
         }
 
-        await batch.commit(); // Executa as operações em batch
+        await batch.commit();
         console.log("Batch committed successfully for updateModeratorStatus.");
         loadModeratorRequests(true); // Recarrega a lista de solicitações
     } catch (error) {
