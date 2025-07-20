@@ -1,3 +1,4 @@
+// grupo.js
 import { auth, db } from './firebase.js';
 // Garanta que `doc` está na lista de imports explicitamente para ser usado
 import { doc, getDoc, updateDoc, deleteDoc, arrayUnion, deleteField, arrayRemove, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -255,18 +256,26 @@ if (chatForm) {
         const messageText = chatInput.value.trim();
         if (messageText.length === 0 || !currentUser) return;
 
+        chatInput.disabled = true;
+
         // Verificar se o usuário está silenciado
-        const userDoc = await getDoc(doc(db, 'usuarios', currentUser.uid));
-        const userData = userDoc.data();
-        if (userData.silenciadoAte && userData.silenciadoAte.toDate() > new Date()) {
-            showAlert("Você está silenciado e não pode enviar mensagens no momento. Tente novamente mais tarde.");
-            chatInput.value = '';
+        try { 
+            const userDoc = await getDoc(doc(db, 'usuarios', currentUser.uid));
+            const userData = userDoc.data();
+            if (userData.silenciadoAte && userData.silenciadoAte.toDate() > new Date()) {
+                showAlert("Você está silenciado e não pode enviar mensagens no momento. Tente novamente mais tarde.");
+                chatInput.value = '';
+                chatInput.disabled = false;
+                chatInput.focus();
+                return;
+            }
+        } catch (error) {
+            console.error("Erro ao verificar status de silenciamento:", error);
+            showAlert("Erro ao verificar seu status. Tente novamente.");
             chatInput.disabled = false;
             chatInput.focus();
             return;
         }
-
-        chatInput.disabled = true;
 
         try {
             const messagesRef = collection(db, 'grupos', groupId, 'mensagens');
@@ -278,7 +287,6 @@ if (chatForm) {
                 silenced: false, // Garante que a mensagem não é silenciada por padrão
                 systemMessage: false // Garante que não é uma mensagem de sistema por padrão
             });
-            showAlert("Mensagem enviada com sucesso!", "Chat do Grupo");
             chatInput.value = '';
         } catch (error) {
             console.error("Erro ao enviar mensagem:", error);
