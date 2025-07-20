@@ -41,7 +41,4 @@ export function showAlert(message, title = "Atenção!") {
     if (customAlertTitle) customAlertTitle.textContent = title;
     if (customAlertMessage) customAlertMessage.textContent = message;
     if (customAlertModal) customAlertModal.classList.add('visible');
-
-    // Nenhuma necessidade de adicionar/remover listeners aqui, pois eles já são persistentes no DOMContentLoaded
-    // A função apenas controla a visibilidade do modal.
 }
