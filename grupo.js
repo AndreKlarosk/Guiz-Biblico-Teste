@@ -1,5 +1,5 @@
 import { auth, db } from './firebase.js';
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+// Garanta que `doc` está na lista de imports explicitamente para ser usado
 import { doc, getDoc, updateDoc, deleteDoc, arrayUnion, deleteField, arrayRemove, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { showAlert } from './utils.js'; // Importa o showAlert
 
@@ -63,8 +63,6 @@ window.addEventListener('DOMContentLoaded', () => {
             if (transferModerationModal) transferModerationModal.classList.remove('visible');
         });
     }
-    // Não é mais necessário adicionar listener window.onclick aqui para este modal
-    // if (window.event.target == transferModerationModal) { ... }
 });
 
 async function loadGroupData() {
@@ -210,10 +208,10 @@ function loadChatMessages() {
     const messagesRef = collection(db, 'grupos', groupId, 'mensagens');
     const q = query(messagesRef, orderBy('timestamp'));
 
-    unsubscribeChat = onSnapshot(q, async (querySnapshot) => { // Added async
+    unsubscribeChat = onSnapshot(q, async (querySnapshot) => { 
         if (chatMessagesDiv) chatMessagesDiv.innerHTML = '';
-        for (const doc of querySnapshot.docs) { // Changed to for...of for await
-            const msg = doc.data();
+        for (const messageDoc of querySnapshot.docs) { 
+            const msg = messageDoc.data();
             const messageElement = document.createElement('div');
             messageElement.classList.add('chat-message');
             
@@ -222,25 +220,24 @@ function loadChatMessages() {
                 messageElement.classList.add('my-message');
             }
 
-            // Fetch sender's data to check for 'silenciadoAte'
             let senderName = msg.senderName || 'Desconhecido';
             if (msg.senderUid) {
-                const senderUserDoc = await getDoc(doc(db, 'usuarios', msg.senderUid));
+                const senderUserDoc = await getDoc(doc(db, 'usuarios', msg.senderUid)); 
                 if (senderUserDoc.exists()) {
                     const senderData = senderUserDoc.data();
                     const silencedUntil = senderData.silenciadoAte && senderData.silenciadoAte.toDate();
                     if (silencedUntil && silencedUntil > new Date()) {
                         messageElement.classList.add('silenced');
-                        // Opcional: mostrar "silenciado" no nome, mas o CSS já pode estilizar a bolha
-                        // senderName += ' (silenciado)'; 
                     }
                 }
             }
-            if (msg.systemMessage) { // Mensagens do sistema (ex: silenciamento)
+            if (msg.systemMessage) {
                 messageElement.classList.add('system-message');
             }
-
-
+            if (msg.silenced) {
+                 messageElement.classList.add('silenced');
+            }
+            
             messageElement.innerHTML = `
                 <div class="message-sender">${isMyMessage ? 'Eu' : senderName || 'Sistema'}</div>
                 <div class="message-bubble">${msg.text}</div>
@@ -260,6 +257,9 @@ if (chatForm) {
         // Verificar se o usuário está silenciado
         const userDoc = await getDoc(doc(db, 'usuarios', currentUser.uid));
         const userData = userDoc.data();
+        // A regra `request.time` é um Timestamp do Firestore. Comparar com `new Date()` no JS exige cuidado.
+        // A comparação `silenciadoAte > request.time` é feita nas regras do Firestore.
+        // Aqui no cliente, apenas verificamos se a data de silenciamento já passou.
         if (userData.silenciadoAte && userData.silenciadoAte.toDate() > new Date()) {
             showAlert("Você está silenciado e não pode enviar mensagens no momento. Tente novamente mais tarde.");
             chatInput.value = '';
@@ -267,7 +267,6 @@ if (chatForm) {
             chatInput.focus();
             return;
         }
-
 
         chatInput.disabled = true;
 
@@ -278,12 +277,14 @@ if (chatForm) {
                 senderUid: currentUser.uid,
                 senderName: currentUser.displayName,
                 timestamp: serverTimestamp(),
-                silenced: false // Default para mensagens normais
+                silenced: false, // Garante que a mensagem não é silenciada por padrão
+                systemMessage: false // Garante que não é uma mensagem de sistema por padrão
             });
+            showAlert("Mensagem enviada com sucesso!", "Chat do Grupo"); // Alerta de sucesso
             chatInput.value = '';
         } catch (error) {
             console.error("Erro ao enviar mensagem:", error);
-            showAlert("Não foi possível enviar a sua mensagem.");
+            showAlert("Não foi possível enviar a sua mensagem.", "Erro no Chat"); // Substituído alert
         } finally {
             chatInput.disabled = false;
             chatInput.focus();
