@@ -1,35 +1,31 @@
 // utils.js
 
-let customAlertModal;
-let customAlertTitle;
-let customAlertMessage;
-let customAlertOkBtn;
-let closeCustomAlertModal;
+let customAlertModalElement; // Renomeado para evitar confusão com o nome da função showAlert
+let customAlertTitleElement;
+let customAlertMessageElement;
+let customAlertOkBtnElement;
+let closeCustomAlertModalElement;
 
-// Adiciona event listeners assim que o DOM estiver carregado
 document.addEventListener('DOMContentLoaded', () => {
-    // Obtenha as referências aos elementos do modal APENAS quando o DOM estiver pronto
-    customAlertModal = document.getElementById('custom-alert-modal');
-    customAlertTitle = document.getElementById('custom-alert-title');
-    customAlertMessage = document.getElementById('custom-alert-message');
-    customAlertOkBtn = document.getElementById('custom-alert-ok-btn');
-    closeCustomAlertModal = document.getElementById('close-custom-alert-modal');
+    customAlertModalElement = document.getElementById('custom-alert-modal');
+    customAlertTitleElement = document.getElementById('custom-alert-title');
+    customAlertMessageElement = document.getElementById('custom-alert-message');
+    customAlertOkBtnElement = document.getElementById('custom-alert-ok-btn');
+    closeCustomAlertModalElement = document.getElementById('close-custom-alert-modal');
 
-    // Agora que os elementos foram obtidos, adicione os event listeners
-    if (customAlertOkBtn) {
-        customAlertOkBtn.addEventListener('click', () => {
-            if (customAlertModal) customAlertModal.classList.remove('visible');
+    if (customAlertOkBtnElement) {
+        customAlertOkBtnElement.addEventListener('click', () => {
+            if (customAlertModalElement) customAlertModalElement.classList.remove('visible');
         });
     }
-    if (closeCustomAlertModal) {
-        closeCustomAlertModal.addEventListener('click', () => {
-            if (customAlertModal) customAlertModal.classList.remove('visible');
+    if (closeCustomAlertModalElement) {
+        closeCustomAlertModalElement.addEventListener('click', () => {
+            if (customAlertModalElement) customAlertModalElement.classList.remove('visible');
         });
     }
     window.addEventListener('click', (event) => {
-        // Verifica se o clique foi diretamente no backdrop do modal
-        if (event.target === customAlertModal) {
-            if (customAlertModal) customAlertModal.classList.remove('visible');
+        if (event.target === customAlertModalElement) {
+            if (customAlertModalElement) customAlertModalElement.classList.remove('visible');
         }
     });
 });
@@ -40,14 +36,25 @@ document.addEventListener('DOMContentLoaded', () => {
  * @param {string} [title="Atenção!"] O título do alerta.
  */
 export function showAlert(message, title = "Atenção!") {
-    // Verifica se os elementos do modal foram carregados (agora estarão após DOMContentLoaded)
-    if (!customAlertModal) {
-        console.error("Custom alert modal elements not found. Falling back to native alert.");
-        alert(`${title}\n\n${message}`);
-        return;
+    // Garante que os elementos são obtidos ou já foram obtidos pelo DOMContentLoaded
+    if (!customAlertModalElement) { // Verifica a variável que é atribuída no DOMContentLoaded
+        console.error("Custom alert modal elements not found. Attempting to get them now.");
+        // Tenta obter novamente caso o DOMContentLoaded não tenha sido disparado ainda
+        // (cenário menos comum para módulos, mas para robustez)
+        customAlertModalElement = document.getElementById('custom-alert-modal');
+        customAlertTitleElement = document.getElementById('custom-alert-title');
+        customAlertMessageElement = document.getElementById('custom-alert-message');
+        customAlertOkBtnElement = document.getElementById('custom-alert-ok-btn');
+        closeCustomAlertModalElement = document.getElementById('close-custom-alert-modal');
+
+        if (!customAlertModalElement) { // Se ainda não encontrou, volta para o alerta nativo
+            console.error("Custom alert modal elements still not found after retry. Falling back to native alert.");
+            alert(`${title}\n\n${message}`);
+            return;
+        }
     }
 
-    if (customAlertTitle) customAlertTitle.textContent = title;
-    if (customAlertMessage) customAlertMessage.textContent = message;
-    if (customAlertModal) customAlertModal.classList.add('visible');
+    if (customAlertTitleElement) customAlertTitleElement.textContent = title;
+    if (customAlertMessageElement) customAlertMessageElement.textContent = message;
+    if (customAlertModalElement) customAlertModalElement.classList.add('visible');
 }
