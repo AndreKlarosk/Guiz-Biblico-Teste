@@ -1,6 +1,7 @@
 import { auth, db } from './firebase.js';
 // Garanta que `doc` está na lista de imports explicitamente para ser usado
 import { doc, getDoc, updateDoc, deleteDoc, arrayUnion, deleteField, arrayRemove, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"; // <-- NOVA IMPORTAÇÃO
 import { showAlert } from './utils.js'; // Importa o showAlert
 
 // --- Elementos da UI ---
@@ -47,7 +48,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     groupId = params.get('id');
     if (!groupId) { showNotFound(); return; }
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, (user) => { // Linha 50
         currentUser = user;
         loadGroupData();
     });
