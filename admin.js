@@ -1,6 +1,7 @@
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, query, orderBy, limit, startAfter, where, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { showAlert } from './utils.js'; // <-- NOVA IMPORTAÇÃO
 
 // --- Elementos da Interface do Usuário (UI) ---
 const adminContent = document.getElementById('admin-content');
@@ -573,7 +574,6 @@ async function loadModeratorRequests(clear = true) {
             // Verificação de userId no carregamento
             if (!requestData.userId) {
                 console.warn(`Documento de solicitação ${doc.id} não possui userId. Pode causar problemas.`);
-                // Opcional: Adicionar um userId padrão ou pular o documento se for problemático demais
             }
             newRequests.push({ id: doc.id, ...requestData });
         });
@@ -757,10 +757,10 @@ async function updateModeratorStatus(requestId, status, userId) { // userId agor
                 gruposCriados: [], // Inicializa como vazio
                 dataAtivacao: serverTimestamp()
             });
-            showAlert(`Solicitação de ${requestDocData.userName} APROVADA! Usuário agora é moderador.`); // SUBSTITUÍDO
+            showAlert(`Solicitação de ${requestDocData.userName} APROVADA! Usuário agora é moderador.`);
             console.log(`User ${userId} (Moderator) status set to true, plan ${requestDocData.plano}.`);
         } else if (status === 'rejeitado') {
-            showAlert(`Solicitação de ${requestDocData.userName} REJEITADA!`); // SUBSTITUÍDO
+            showAlert(`Solicitação de ${requestDocData.userName} REJEITADA!`);
             batch.update(userRef, {
                 moderador: false,
                 plano: null,
@@ -775,7 +775,7 @@ async function updateModeratorStatus(requestId, status, userId) { // userId agor
         loadModeratorRequests(true); // Recarrega a lista de solicitações
     } catch (error) {
         console.error(`Erro ao ${status} solicitação de moderador:`, error);
-        showAlert(`Ocorreu um erro ao ${status} a solicitação.`); // SUBSTITUÍDO
+        showAlert(`Ocorreu um erro ao ${status} a solicitação.`);
     }
 }
 
@@ -785,12 +785,12 @@ async function deactivateModerator(userId, requestId) { // userId e requestId s�
     // Verificação adicional, embora já feita no event listener
     if (!userId) {
         console.error("Erro interno: userId é indefinido ou nulo na função deactivateModerator.");
-        showAlert("Erro interno: Não foi possível processar a desativação. ID de usuário inválido."); // SUBSTITUÍDO
+        showAlert("Erro interno: Não foi possível processar a desativação. ID de usuário inválido.");
         return;
     }
     if (!requestId) { // Verificação para requestId
         console.error("Erro interno: requestId é indefinido ou nulo na função deactivateModerator.");
-        showAlert("Erro interno: Não foi possível processar a desativação. ID de solicitação inválido."); // SUBSTITUÍDO
+        showAlert("Erro interno: Não foi possível processar a desativação. ID de solicitação inválido.");
         return;
     }
 
@@ -814,11 +814,11 @@ async function deactivateModerator(userId, requestId) { // userId e requestId s�
         console.log(`Request ${requestId} status set to 'rejeitado' upon deactivation.`);
 
         await batch.commit(); // Executa as operações atomicamente
-        showAlert('Status de moderador desativado com sucesso!'); // SUBSTITUÍDO
+        showAlert('Status de moderador desativado com sucesso!');
         console.log("Moderator deactivated and batch committed successfully.");
         loadModeratorRequests(true); // Recarrega a lista de solicitações para refletir a mudança
     } catch (error) {
         console.error("Erro ao desativar moderador:", error);
-        showAlert("Não foi possível desativar o moderador."); // SUBSTITUÍDO
+        showAlert("Não foi possível desativar o moderador.");
     }
 }
