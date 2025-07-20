@@ -60,29 +60,36 @@ const MODERATOR_PLANS = {
 
 // --- Proteção de Rota (Verificação de Administrador) ---
 onAuthStateChanged(auth, async (user) => {
+    console.log("onAuthStateChanged at admin.js: User:", user ? user.uid : "No user");
     if (user) {
         const userRef = doc(db, 'usuarios', user.uid);
         const userDoc = await getDoc(userRef);
+        console.log("User document data:", userDoc.exists() ? userDoc.data() : "Does not exist");
         if (userDoc.exists() && userDoc.data().admin === true) {
+            console.log("User is admin. Granting access to admin panel.");
             authGuardMessage.classList.add('hidden');
             adminContent.classList.remove('hidden');
             loadQuestions();
             loadSuggestions();
             loadModeratorRequests(); // Carregar solicitações de moderador ao carregar o painel
         } else {
+            console.warn("User is NOT admin or user document does not exist. Denying access.");
             authGuardMessage.innerHTML = '<h2>Acesso Negado</h2><p>Você não tem permissão para acessar esta página.</p>';
         }
     } else {
+        console.log("No user authenticated. Denying access.");
         authGuardMessage.innerHTML = '<h2>Acesso Negado</h2><p>Faça login como administrador para continuar.</p>';
     }
 });
 
 // --- Lógica CRUD de Perguntas ---
 async function loadQuestions() {
+    console.log("Loading questions...");
     questionsTbody.innerHTML = '<tr><td colspan="3">Carregando perguntas...</td></tr>';
     try {
         const querySnapshot = await getDocs(collection(db, "perguntas"));
         if (querySnapshot.empty) {
+            console.log("No questions found.");
             questionsTbody.innerHTML = '<tr><td colspan="3">Nenhuma pergunta cadastrada.</td></tr>';
             return;
         }
@@ -93,6 +100,7 @@ async function loadQuestions() {
             row.innerHTML = `<td>${question.enunciado}</td><td>${question.nivel}</td><td class="actions-cell"><button class="btn edit-btn" data-id="${doc.id}">Editar</button><button class="btn delete-btn" data-id="${doc.id}" style="background: var(--danger-color);">Excluir</button></td>`;
             questionsTbody.appendChild(row);
         });
+        console.log("Questions loaded successfully.");
     } catch (error) {
         console.error("Erro ao carregar perguntas:", error);
         questionsTbody.innerHTML = '<tr><td colspan="3">Erro ao carregar perguntas.</td></tr>';
@@ -100,6 +108,7 @@ async function loadQuestions() {
 }
 
 saveBtn.addEventListener('click', async () => {
+    console.log("Save question button clicked.");
     const questionId = questionIdInput.value;
     const faixaEtaria = [];
     if (faixaCriancaCheckbox.checked) faixaEtaria.push("crianca");
@@ -107,6 +116,7 @@ saveBtn.addEventListener('click', async () => {
     if (faixaAdultoCheckbox.checked) faixaEtaria.push("adulto");
     if (faixaEtaria.length === 0) {
         alert("Por favor, selecione pelo menos uma faixa etária.");
+        console.warn("Faixa etária não selecionada.");
         return;
     }
     const questionData = {
@@ -121,15 +131,18 @@ saveBtn.addEventListener('click', async () => {
     };
     if (!questionData.enunciado || questionData.alternativas.some(alt => !alt)) {
         alert("Por favor, preencha todos os campos da pergunta e das alternativas.");
+        console.warn("Missing required question fields.");
         return;
     }
     try {
         if (questionId) {
             await updateDoc(doc(db, 'perguntas', questionId), questionData);
             alert('Pergunta atualizada com sucesso!');
+            console.log("Question updated:", questionId);
         } else {
-            await addDoc(collection(db, "perguntas"), questionData);
+            const newDocRef = await addDoc(collection(db, "perguntas"), questionData);
             alert('Pergunta adicionada com sucesso!');
+            console.log("Question added:", newDocRef.id);
         }
         resetForm();
         loadQuestions();
@@ -143,6 +156,7 @@ questionsTbody.addEventListener('click', async (e) => {
     const target = e.target;
     const id = target.dataset.id;
     if (target.classList.contains('edit-btn')) {
+        console.log("Edit button clicked for question ID:", id);
         const docSnap = await getDoc(doc(db, 'perguntas', id));
         if (docSnap.exists()) {
             const data = docSnap.data();
@@ -160,13 +174,18 @@ questionsTbody.addEventListener('click', async (e) => {
             saveBtn.textContent = 'Atualizar Pergunta';
             cancelBtn.classList.remove('hidden');
             window.scrollTo(0, 0);
+            console.log("Question data loaded for editing:", data);
+        } else {
+            console.warn("Question document not found for ID:", id);
         }
     }
     if (target.classList.contains('delete-btn')) {
+        console.log("Delete button clicked for question ID:", id);
         if (confirm('Tem certeza que deseja excluir esta pergunta?')) {
             try {
                 await deleteDoc(doc(db, "perguntas", id));
                 alert('Pergunta excluída com sucesso!');
+                console.log("Question deleted:", id);
                 loadQuestions();
             } catch (error) {
                 console.error("Erro ao excluir pergunta:", error);
@@ -176,7 +195,10 @@ questionsTbody.addEventListener('click', async (e) => {
     }
 });
 
-cancelBtn.addEventListener('click', resetForm);
+cancelBtn.addEventListener('click', () => {
+    console.log("Cancel edit button clicked. Resetting form.");
+    resetForm();
+});
 
 function resetForm() {
     formTitle.textContent = 'Adicionar Nova Pergunta';
@@ -198,6 +220,7 @@ function resetForm() {
 }
 
 exportBtn.addEventListener('click', async () => {
+    console.log("Export questions button clicked.");
     try {
         const querySnapshot = await getDocs(collection(db, "perguntas"));
         const perguntas = [];
@@ -208,6 +231,7 @@ exportBtn.addEventListener('click', async () => {
         });
         if (perguntas.length === 0) {
             alert("Nenhuma pergunta para exportar.");
+            console.warn("No questions to export.");
             return;
         }
         const jsonString = JSON.stringify(perguntas, null, 2);
@@ -220,6 +244,7 @@ exportBtn.addEventListener('click', async () => {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        console.log(`${perguntas.length} questions exported successfully.`);
     } catch (error) {
         console.error("Erro ao exportar perguntas:", error);
         alert("Ocorreu um erro ao exportar as perguntas.");
@@ -227,9 +252,11 @@ exportBtn.addEventListener('click', async () => {
 });
 
 importBtn.addEventListener('click', () => {
+    console.log("Import questions button clicked.");
     const file = importFileInput.files[0];
     if (!file) {
         alert("Por favor, selecione um arquivo JSON.");
+        console.warn("No file selected for import.");
         return;
     }
     const reader = new FileReader();
@@ -238,9 +265,13 @@ importBtn.addEventListener('click', () => {
             const perguntas = JSON.parse(event.target.result);
             if (!Array.isArray(perguntas) || perguntas.length === 0) {
                 alert("Arquivo JSON inválido ou vazio.");
+                console.warn("Invalid or empty JSON file for import.");
                 return;
             }
-            if (!confirm(`Deseja importar ${perguntas.length} perguntas? Isso pode substituir ou adicionar dados.`)) return;
+            if (!confirm(`Deseja importar ${perguntas.length} perguntas? Isso pode substituir ou adicionar dados.`)) {
+                console.log("Import cancelled by user.");
+                return;
+            }
             const batch = writeBatch(db);
             const perguntasCollection = collection(db, "perguntas");
             let importedCount = 0;
@@ -259,6 +290,7 @@ importBtn.addEventListener('click', () => {
             });
             await batch.commit();
             alert(`${importedCount} perguntas importadas com sucesso!`);
+            console.log(`${importedCount} questions imported successfully.`);
             loadQuestions();
             importFileInput.value = '';
         } catch (error) {
@@ -271,6 +303,7 @@ importBtn.addEventListener('click', () => {
 
 // --- Lógica de Sugestões ---
 async function loadSuggestions(clear = true) {
+    console.log("Loading suggestions. Clear:", clear);
     if (clear) {
         suggestionsTbody.innerHTML = '<tr><td colspan="5">Carregando sugestões...</td></tr>';
         lastVisibleSuggestion = null;
@@ -314,6 +347,7 @@ async function loadSuggestions(clear = true) {
         }
 
         if (newSuggestions.length === 0 && clear) {
+            console.log("No suggestions found for current filter.");
             suggestionsTbody.innerHTML = '<tr><td colspan="5">Nenhuma sugestão cadastrada.</td></tr>';
             loadMoreSuggestionsBtn.classList.add('hidden');
             return;
@@ -344,6 +378,7 @@ async function loadSuggestions(clear = true) {
             loadMoreSuggestionsBtn.classList.remove('hidden');
             lastVisibleSuggestion = querySnapshot.docs[querySnapshot.docs.length - 1]; // Armazena o último documento para paginação
         }
+        console.log(`${newSuggestions.length} suggestions loaded.`);
 
     } catch (error) {
         console.error("Erro ao carregar sugestões:", error);
@@ -369,6 +404,7 @@ if (suggestionsTbody) {
         const id = target.dataset.id; // ID da sugestão
 
         if (target.classList.contains('respond-suggestion-btn')) {
+            console.log("Respond suggestion button clicked for ID:", id);
             const docSnap = await getDoc(doc(db, 'sugestoes', id));
             if (docSnap.exists()) {
                 const data = docSnap.data();
@@ -380,12 +416,16 @@ if (suggestionsTbody) {
                 const responseSnap = await getDoc(doc(db, 'sugestoes', id, 'respostas', 'adminResponse'));
                 if (responseSnap.exists()) {
                     responseTextarea.value = responseSnap.data().resposta;
+                    console.log("Existing response loaded.");
                 }
                 respondSuggestionModal.classList.add('visible');
+            } else {
+                console.warn("Suggestion document not found for ID:", id);
             }
         }
         
         if (target.classList.contains('delete-suggestion-btn')) {
+            console.log("Delete suggestion button clicked for ID:", id);
             if (confirm('Tem certeza que deseja excluir esta sugestão? Isso também excluirá qualquer resposta associada.')) {
                 try {
                     // Excluir a subcoleção de respostas primeiro (se existir)
@@ -395,9 +435,11 @@ if (suggestionsTbody) {
                         batch.delete(resDoc.ref);
                     });
                     await batch.commit(); // Executa a exclusão das subcoleções
+                    console.log("Subcollection 'respostas' deleted for suggestion ID:", id);
 
                     await deleteDoc(doc(db, "sugestoes", id)); // Exclui o documento da sugestão principal
                     alert('Sugestão excluída com sucesso!');
+                    console.log("Suggestion document deleted for ID:", id);
                     loadSuggestions(true); // Recarrega a lista
                 } catch (error) {
                     console.error("Erro ao excluir sugestão:", error);
@@ -411,6 +453,7 @@ if (suggestionsTbody) {
 // Lógica do Modal de Resposta
 if (closeRespondSuggestionModal) {
     closeRespondSuggestionModal.addEventListener('click', () => {
+        console.log("Closing respond suggestion modal.");
         respondSuggestionModal.classList.remove('visible');
         currentSuggestionBeingResponded = null; // Reseta a sugestão atual
     });
@@ -418,6 +461,7 @@ if (closeRespondSuggestionModal) {
 
 if (cancelResponseBtn) {
     cancelResponseBtn.addEventListener('click', () => {
+        console.log("Cancelling respond suggestion.");
         respondSuggestionModal.classList.remove('visible');
         currentSuggestionBeingResponded = null; // Reseta a sugestão atual
     });
@@ -425,20 +469,27 @@ if (cancelResponseBtn) {
 
 if (sendResponseBtn) {
     sendResponseBtn.addEventListener('click', async () => {
-        if (!currentSuggestionBeingResponded) return;
+        console.log("Send response button clicked.");
+        if (!currentSuggestionBeingResponded) {
+            console.warn("No suggestion selected to respond to.");
+            return;
+        }
 
         const responseText = responseTextarea.value.trim();
         if (!responseText) {
             alert('Por favor, escreva uma resposta.');
+            console.warn("Response text is empty.");
             return;
         }
         if (responseText.length > 500) {
             alert('A resposta não pode ter mais de 500 caracteres.');
+            console.warn("Response text too long.");
             return;
         }
 
         sendResponseBtn.disabled = true;
         sendResponseBtn.textContent = 'Enviando...';
+        console.log("Sending response for suggestion ID:", currentSuggestionBeingResponded.id);
 
         try {
             const suggestionRef = doc(db, 'sugestoes', currentSuggestionBeingResponded.id);
@@ -463,6 +514,7 @@ if (sendResponseBtn) {
             await batch.commit(); // Executa todas as operações do batch atomicamente
 
             alert('Resposta enviada com sucesso!');
+            console.log("Response sent successfully.");
             respondSuggestionModal.classList.remove('visible');
             loadSuggestions(true); // Recarrega a lista para mostrar o status atualizado
             currentSuggestionBeingResponded = null;
@@ -479,6 +531,7 @@ if (sendResponseBtn) {
 
 // --- Lógica de Solicitações de Moderador ---
 async function loadModeratorRequests(clear = true) {
+    console.log("Loading moderator requests. Clear:", clear);
     if (clear) {
         moderatorRequestsTbody.innerHTML = '<tr><td colspan="7">Carregando solicitações...</td></tr>';
         lastVisibleRequest = null;
@@ -515,7 +568,14 @@ async function loadModeratorRequests(clear = true) {
         const querySnapshot = await getDocs(q);
         const newRequests = [];
         querySnapshot.forEach((doc) => {
-            newRequests.push({ id: doc.id, ...doc.data() });
+            const requestData = doc.data();
+            console.log("Loading request:", doc.id, "Data:", requestData); // Log cada documento carregado
+            // Verificação de userId no carregamento
+            if (!requestData.userId) {
+                console.warn(`Documento de solicitação ${doc.id} não possui userId. Pode causar problemas.`);
+                // Opcional: Adicionar um userId padrão ou pular o documento se for problemático demais
+            }
+            newRequests.push({ id: doc.id, ...requestData });
         });
 
         if (clear) {
@@ -523,6 +583,7 @@ async function loadModeratorRequests(clear = true) {
         }
 
         if (newRequests.length === 0 && clear) {
+            console.log("No moderator requests found for current filter.");
             moderatorRequestsTbody.innerHTML = '<tr><td colspan="7">Nenhuma solicitação de moderador.</td></tr>';
             loadMoreModeratorRequestsBtn.classList.add('hidden');
             return;
@@ -540,6 +601,8 @@ async function loadModeratorRequests(clear = true) {
             const rejectBtnDisabled = isApproved ? 'disabled' : ''; // Desabilita rejeitar se já aprovado
             const deactivateBtnHidden = isApproved ? '' : 'hidden'; // Mostra desativar APENAS se aprovado
             
+            console.log(`Rendering request ID: ${request.id} | User ID: ${request.userId} | Status: ${request.status}`); // Log detalhado para cada linha renderizada
+
             const actionsHtml = `
                 <button class="btn approve-request-btn" data-id="${request.id}" ${approveBtnDisabled}>Aprovar</button>
                 <button class="btn reject-request-btn" data-id="${request.id}" style="background: var(--danger-color);" ${rejectBtnDisabled}>Rejeitar</button>
@@ -565,6 +628,7 @@ async function loadModeratorRequests(clear = true) {
             loadMoreModeratorRequestsBtn.classList.remove('hidden');
             lastVisibleRequest = querySnapshot.docs[querySnapshot.docs.length - 1];
         }
+        console.log(`${newRequests.length} moderator requests loaded.`);
 
     } catch (error) {
         console.error("Erro ao carregar solicitações de moderador:", error);
@@ -592,17 +656,20 @@ if (moderatorRequestsTbody) {
 
         // Lógica para aprovar, rejeitar ou desativar moderador
         if (target.classList.contains('approve-request-btn')) {
+            console.log("Approve request button clicked for request ID:", requestId);
             if (confirm('Tem certeza que deseja APROVAR esta solicitação?')) {
                 await updateModeratorStatus(requestId, 'aprovado');
             }
         } else if (target.classList.contains('reject-request-btn')) {
+            console.log("Reject request button clicked for request ID:", requestId);
             if (confirm('Tem certeza que deseja REJEITAR esta solicitação?')) {
                 await updateModeratorStatus(requestId, 'rejeitado');
             }
         } else if (target.classList.contains('deactivate-moderator-btn')) {
+            console.log("Deactivate moderator button clicked for user ID:", userId, "Request ID:", requestId);
             // Verificação de segurança: garantir que userId não é undefined/null
             if (!userId) {
-                console.error("Erro: userId não encontrado no dataset do botão Desativar.", target);
+                console.error("Erro: userId não encontrado no dataset do botão Desativar. Target element:", target);
                 alert("Não foi possível identificar o usuário para desativar. Recarregue a página e tente novamente.");
                 return;
             }
@@ -615,21 +682,30 @@ if (moderatorRequestsTbody) {
 
 // Função para atualizar o status de uma solicitação de moderador (Aprovar/Rejeitar)
 async function updateModeratorStatus(requestId, status) {
+    console.log(`Updating moderator status for request ID: ${requestId} to ${status}.`);
     const requestRef = doc(db, 'solicitacoesModerador', requestId);
     try {
         const requestDoc = await getDoc(requestRef);
         if (!requestDoc.exists()) {
             alert("Solicitação não encontrada.");
+            console.warn("Request document not found for ID:", requestId);
             return;
         }
         const requestData = requestDoc.data();
         const userId = requestData.userId; // O ID do usuário associado à solicitação
+        
+        if (!userId) { // Adiciona uma verificação extra para userId
+            console.error(`Erro: userId ausente na solicitação ${requestId}. Não é possível atualizar o usuário.`);
+            alert("Erro: ID de usuário ausente na solicitação.");
+            return;
+        }
         const userRef = doc(db, 'usuarios', userId);
 
         const batch = writeBatch(db);
 
         // 1. Atualizar o status da solicitação
         batch.update(requestRef, { status: status });
+        console.log(`Request ${requestId} status updated to ${status}.`);
 
         // 2. Atualizar o documento do usuário com base no status
         if (status === 'aprovado') {
@@ -640,20 +716,20 @@ async function updateModeratorStatus(requestId, status) {
                 dataAtivacao: serverTimestamp()
             });
             alert(`Solicitação de ${requestData.userName} APROVADA! Usuário agora é moderador.`);
+            console.log(`User ${userId} (Moderator) status set to true, plan ${requestData.plano}.`);
         } else if (status === 'rejeitado') {
             alert(`Solicitação de ${requestData.userName} REJEITADA.`);
-            // Se rejeitado, também resetamos o status de moderador do usuário, caso ele já fosse.
-            // Isso evita situações onde um moderador que tinha plano expirado/revogado e solicitou de novo
-            // não fica "preso" como moderador sem plano.
             batch.update(userRef, {
                 moderador: false,
                 plano: null,
                 gruposCriados: [],
                 dataAtivacao: null
             });
+            console.log(`User ${userId} (Moderator) status set to false.`);
         }
 
         await batch.commit(); // Executa as operações em batch
+        console.log("Batch committed successfully for updateModeratorStatus.");
         loadModeratorRequests(true); // Recarrega a lista de solicitações
     } catch (error) {
         console.error(`Erro ao ${status} solicitação de moderador:`, error);
@@ -663,10 +739,11 @@ async function updateModeratorStatus(requestId, status) {
 
 // NOVA FUNÇÃO: Desativar Moderador
 async function deactivateModerator(userId, requestId) {
+    console.log(`Attempting to deactivate moderator: User ID: ${userId}, Request ID: ${requestId}`);
     // Verificação adicional, embora já feita no event listener
     if (!userId) {
         console.error("Erro interno: userId é indefinido ou nulo na função deactivateModerator.");
-        alert("Erro interno: Não foi possível processar a desativação.");
+        alert("Erro interno: Não foi possível processar a desativação. ID de usuário inválido.");
         return;
     }
 
@@ -683,13 +760,16 @@ async function deactivateModerator(userId, requestId) {
             gruposCriados: [], // Importante para zerar a contagem de grupos criados e liberar o limite
             dataAtivacao: null
         });
+        console.log(`User ${userId} moderated status reset.`);
 
         // 2. Atualizar o status da solicitação original para 'rejeitado'
         // Isso marca a solicitação como tratada e reflete a desativação.
         batch.update(requestRef, { status: 'rejeitado' }); 
+        console.log(`Request ${requestId} status set to 'rejeitado' upon deactivation.`);
 
         await batch.commit(); // Executa as operações atomicamente
         alert('Status de moderador desativado com sucesso!');
+        console.log("Moderator deactivated and batch committed successfully.");
         loadModeratorRequests(true); // Recarrega a lista de solicitações para refletir a mudança
     } catch (error) {
         console.error("Erro ao desativar moderador:", error);
