@@ -1,6 +1,7 @@
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { doc, getDoc, updateDoc, deleteDoc, arrayUnion, deleteField, arrayRemove, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { doc, getDoc, updateDoc, deleteDoc, arrayUnion, deleteField, arrayRemove, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { showAlert } from './utils.js'; // Importa o showAlert
 
 // --- Elementos da UI ---
 const loadingDiv = document.getElementById('loading-group');
@@ -23,6 +24,13 @@ const chatMessagesDiv = document.getElementById('chat-messages');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 
+// Elementos do Modal de Transferência de Moderação
+const transferModerationModal = document.getElementById('transfer-moderation-modal');
+const closeTransferModerationModal = document.getElementById('close-transfer-moderation-modal');
+const memberListTransfer = document.getElementById('member-list-transfer');
+const cancelTransferBtn = document.getElementById('cancel-transfer-btn');
+
+
 let currentUser = null;
 let groupId = null;
 let groupData = null;
@@ -42,6 +50,23 @@ window.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, (user) => {
         currentUser = user;
         loadGroupData();
+    });
+
+    // Event listeners para o modal de transferência de moderação
+    if (closeTransferModerationModal) {
+        closeTransferModerationModal.addEventListener('click', () => {
+            if (transferModerationModal) transferModerationModal.classList.remove('visible');
+        });
+    }
+    if (cancelTransferBtn) {
+        cancelTransferBtn.addEventListener('click', () => {
+            if (transferModerationModal) transferModerationModal.classList.remove('visible');
+        });
+    }
+    window.addEventListener('click', (event) => {
+        if (event.target == transferModerationModal) {
+            if (transferModerationModal) transferModerationModal.classList.remove('visible');
+        }
     });
 });
 
@@ -86,7 +111,7 @@ function displayGroupData() {
             const rankClass = `rank-${index + 1}`;
             
             const removeButtonHtml = isCreator && member.uid !== groupData.criadorUid
-                ? `<button class="remove-member-btn" data-uid="${member.uid}" title="Remover Membro"><i class="fas fa-times"></i></button>`
+                ? `<button class="remove-member-btn btn-small" data-uid="${member.uid}" title="Remover Membro"><i class="fas fa-times"></i></button>`
                 : '';
 
             row.innerHTML = `
@@ -144,8 +169,8 @@ function updateActionButtons() {
         inviteBtn.innerHTML = '<i class="fas fa-share-alt"></i> Convidar Amigos';
         inviteBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(window.location.href)
-                .then(() => alert('Link de convite copiado!'))
-                .catch(() => alert('Não foi possível copiar o link.'));
+                .then(() => showAlert('Link de convite copiado!')) // Substituído alert
+                .catch(() => showAlert('Não foi possível copiar o link.')); // Substituído alert
         });
         groupActionsDiv.appendChild(inviteBtn);
     } else {
@@ -165,6 +190,12 @@ function updateActionButtons() {
         editBtn.innerHTML = '<i class="fas fa-pencil-alt"></i> Editar';
         editBtn.addEventListener('click', openEditModal);
         groupActionsDiv.appendChild(editBtn);
+
+        const transferBtn = document.createElement('button');
+        transferBtn.className = 'btn btn-secondary';
+        transferBtn.innerHTML = '<i class="fas fa-exchange-alt"></i> Transferir Moderação';
+        transferBtn.addEventListener('click', openTransferModerationModal);
+        groupActionsDiv.appendChild(transferBtn);
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'btn';
@@ -193,9 +224,15 @@ function loadChatMessages() {
             if (isMyMessage) {
                 messageElement.classList.add('my-message');
             }
+            if (msg.silenced) { // Se a mensagem está silenciada (apenas para exibição)
+                messageElement.classList.add('silenced');
+            }
+            if (msg.systemMessage) { // Mensagens do sistema (ex: silenciamento)
+                messageElement.classList.add('system-message');
+            }
 
             messageElement.innerHTML = `
-                <div class="message-sender">${isMyMessage ? 'Eu' : msg.senderName}</div>
+                <div class="message-sender">${isMyMessage ? 'Eu' : msg.senderName || 'Sistema'}</div>
                 <div class="message-bubble">${msg.text}</div>
             `;
             if (chatMessagesDiv) chatMessagesDiv.appendChild(messageElement);
@@ -210,6 +247,18 @@ if (chatForm) {
         const messageText = chatInput.value.trim();
         if (messageText.length === 0 || !currentUser) return;
 
+        // Verificar se o usuário está silenciado
+        const userDoc = await getDoc(doc(db, 'usuarios', currentUser.uid));
+        const userData = userDoc.data();
+        if (userData.silenciadoAte && userData.silenciadoAte.toDate() > new Date()) {
+            showAlert("Você está silenciado e não pode enviar mensagens no momento. Tente novamente mais tarde.");
+            chatInput.value = '';
+            chatInput.disabled = false;
+            chatInput.focus();
+            return;
+        }
+
+
         chatInput.disabled = true;
 
         try {
@@ -218,12 +267,13 @@ if (chatForm) {
                 text: messageText,
                 senderUid: currentUser.uid,
                 senderName: currentUser.displayName,
-                timestamp: serverTimestamp()
+                timestamp: serverTimestamp(),
+                silenced: false // Default para mensagens normais
             });
             chatInput.value = '';
         } catch (error) {
             console.error("Erro ao enviar mensagem:", error);
-            alert("Não foi possível enviar a sua mensagem.");
+            showAlert("Não foi possível enviar a sua mensagem."); // Substituído alert
         } finally {
             chatInput.disabled = false;
             chatInput.focus();
@@ -263,7 +313,7 @@ async function joinGroup() {
 
     } catch (error) {
         console.error("Erro ao entrar no grupo:", error);
-        alert("Não foi possível entrar no grupo.");
+        showAlert("Não foi possível entrar no grupo."); // Substituído alert
         if (joinBtn) {
             joinBtn.disabled = false;
             joinBtn.innerHTML = '<i class="fas fa-user-plus"></i> Entrar no Grupo';
@@ -285,7 +335,7 @@ async function removeMember(memberUid) {
             await loadGroupData();
         } catch (error) {
             console.error("Erro ao remover membro:", error);
-            alert("Não foi possível remover o membro.");
+            showAlert("Não foi possível remover o membro."); // Substituído alert
         }
     }
 }
@@ -324,7 +374,7 @@ if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
     const newName = editGroupNameInput.value.trim();
     const newDifficulty = editGroupDifficultySelect.value;
     if (newName.length < 3) {
-        alert("O nome do grupo deve ter pelo menos 3 caracteres.");
+        showAlert("O nome do grupo deve ter pelo menos 3 caracteres."); // Substituído alert
         return;
     }
 
@@ -342,7 +392,7 @@ if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
         await loadGroupData();
     } catch (error) {
         console.error("Erro ao editar grupo:", error);
-        alert("Não foi possível salvar as alterações.");
+        showAlert("Não foi possível salvar as alterações."); // Substituído alert
     } finally {
         saveGroupBtn.disabled = false;
         saveGroupBtn.textContent = 'Salvar Alterações';
@@ -351,7 +401,7 @@ if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
 
 async function deleteGroup() {
     if (!currentUser || !groupData || currentUser.uid !== groupData.criadorUid) {
-        alert("Você não tem permissão para excluir este grupo.");
+        showAlert("Você não tem permissão para excluir este grupo."); // Substituído alert
         return;
     }
 
@@ -366,12 +416,12 @@ async function deleteGroup() {
                 gruposCriados: arrayRemove(groupId)
             });
 
-            alert("Grupo excluído com sucesso.");
+            showAlert("Grupo excluído com sucesso."); // Substituído alert
             // Redireciona para a página inicial
             window.location.href = 'index.html';
         } catch (error) {
             console.error("Erro ao excluir grupo:", error);
-            alert("Não foi possível excluir o grupo.");
+            showAlert("Não foi possível excluir o grupo."); // Substituído alert
         }
     }
 }
@@ -380,4 +430,115 @@ function showNotFound() {
     if (loadingDiv) loadingDiv.classList.add('hidden');
     if (contentDiv) contentDiv.classList.add('hidden');
     if (notFoundDiv) notFoundDiv.classList.remove('hidden');
+}
+
+// --- Funções de Transferência de Moderação ---
+async function openTransferModerationModal() {
+    if (!currentUser || currentUser.uid !== groupData.criadorUid) {
+        showAlert("Você precisa ser o criador do grupo para transferir a moderação.");
+        return;
+    }
+
+    if (memberListTransfer) {
+        memberListTransfer.innerHTML = '';
+        const members = Object.values(groupData.membros);
+
+        // Filtra para remover o próprio criador
+        const otherMembers = members.filter(member => member.uid !== currentUser.uid);
+
+        if (otherMembers.length === 0) {
+            showAlert("Não há outros membros neste grupo para transferir a moderação.");
+            return;
+        }
+
+        otherMembers.forEach(member => {
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `<img src="${member.fotoURL || 'https://placehold.co/30x30'}" alt="${member.nome}"> <span>${member.nome}</span>`;
+            listItem.dataset.uid = member.uid;
+            listItem.dataset.name = member.nome;
+
+            listItem.addEventListener('click', () => {
+                if (confirm(`Tem certeza que deseja transferir a moderação para ${member.nome}?`)) {
+                    transferModeration(member.uid, member.nome);
+                }
+            });
+            memberListTransfer.appendChild(listItem);
+        });
+
+        if (transferModerationModal) transferModerationModal.classList.add('visible');
+    }
+}
+
+async function transferModeration(newModeratorUid, newModeratorName) {
+    if (!currentUser || !groupData || currentUser.uid !== groupData.criadorUid) {
+        showAlert("Você não tem permissão para transferir a moderação deste grupo.");
+        return;
+    }
+
+    if (newModeratorUid === currentUser.uid) {
+        showAlert("Você não pode transferir a moderação para você mesmo.");
+        return;
+    }
+
+    try {
+        const batch = writeBatch(db);
+
+        // 1. Atualizar o grupo com o novo criador
+        const groupRef = doc(db, 'grupos', groupId);
+        batch.update(groupRef, {
+            criadorUid: newModeratorUid,
+            criadorNome: newModeratorName
+        });
+
+        // 2. Remover o grupo da lista de grupos criados do moderador antigo
+        const oldModeratorRef = doc(db, 'usuarios', currentUser.uid);
+        batch.update(oldModeratorRef, {
+            gruposCriados: arrayRemove(groupId)
+        });
+
+        // Opcional: Se o moderador antigo não tiver mais grupos, remover o status de moderador e plano
+        const oldModeratorDoc = await getDoc(oldModeratorRef);
+        const oldModeratorData = oldModeratorDoc.data();
+        if (oldModeratorData.gruposCriados && oldModeratorData.gruposCriados.length <= 1) { // <=1 porque ainda não removemos o grupo no batch
+             // Se este for o último grupo que o antigo moderador tem, redefina o status
+             // A segurança das regras do Firestore deve garantir que ele possa fazer isso em si mesmo.
+             batch.update(oldModeratorRef, {
+                 moderador: false,
+                 plano: null,
+                 dataAtivacao: null
+             });
+        }
+
+
+        // 3. Adicionar o grupo à lista de grupos criados do novo moderador
+        const newModeratorRef = doc(db, 'usuarios', newModeratorUid);
+        // Garante que o novo moderador tenha os campos de moderador setados se ainda não tiver
+        const newModeratorDoc = await getDoc(newModeratorRef);
+        if (!newModeratorDoc.exists() || !newModeratorDoc.data().moderador) {
+            // Se o novo moderador não for ainda um moderador (e não tem um plano),
+            // ele "herda" o plano básico para este grupo, ou você pode ter uma lógica diferente
+            // para usuários comuns que viram moderadores. Para simplificar, definimos um plano básico.
+            batch.update(newModeratorRef, {
+                moderador: true,
+                plano: 'basico', // Ou lógica para definir plano
+                dataAtivacao: serverTimestamp(),
+                gruposCriados: arrayUnion(groupId)
+            });
+            showAlert(`Membro ${newModeratorName} foi promovido a Moderador com Plano Básico!`);
+        } else {
+             batch.update(newModeratorRef, {
+                gruposCriados: arrayUnion(groupId)
+            });
+        }
+       
+        await batch.commit();
+
+        showAlert(`Moderação do grupo transferida para ${newModeratorName} com sucesso!`);
+        if (transferModerationModal) transferModerationModal.classList.remove('visible');
+        loadGroupData(); // Recarrega os dados do grupo para atualizar a UI
+        window.location.href = 'index.html'; // Redireciona para a página inicial, pois você não é mais o criador
+    } catch (error) {
+        console.error("Erro ao transferir moderação:", error);
+        showAlert("Não foi possível transferir a moderação.");
+    }
 }
