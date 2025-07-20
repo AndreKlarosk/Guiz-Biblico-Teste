@@ -1,6 +1,7 @@
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, query, orderBy, limit, startAfter, where, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+// Adicionado onSnapshot à importação do firestore
+import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, query, orderBy, limit, startAfter, where, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { showAlert } from './utils.js'; // Importa o showAlert
 
 // --- Elementos da Interface do Usuário (UI) ---
@@ -137,7 +138,7 @@ saveBtn.addEventListener('click', async () => {
     if (faixaAdolescenteCheckbox.checked) faixaEtaria.push("adolescente");
     if (faixaAdultoCheckbox.checked) faixaEtaria.push("adulto");
     if (faixaEtaria.length === 0) {
-        alert("Por favor, selecione pelo menos uma faixa etária.");
+        showAlert("Por favor, selecione pelo menos uma faixa etária.");
         console.warn("Faixa etária não selecionada.");
         return;
     }
@@ -152,25 +153,25 @@ saveBtn.addEventListener('click', async () => {
         ultimaAtualizacao: serverTimestamp()
     };
     if (!questionData.enunciado || questionData.alternativas.some(alt => !alt)) {
-        alert("Por favor, preencha todos os campos da pergunta e das alternativas.");
+        showAlert("Por favor, preencha todos os campos da pergunta e das alternativas.");
         console.warn("Missing required question fields.");
         return;
     }
     try {
         if (questionId) {
             await updateDoc(doc(db, 'perguntas', questionId), questionData);
-            alert('Pergunta atualizada com sucesso!');
+            showAlert('Pergunta atualizada com sucesso!');
             console.log("Question updated:", questionId);
         } else {
             const newDocRef = await addDoc(collection(db, "perguntas"), questionData);
-            alert('Pergunta adicionada com sucesso!');
+            showAlert('Pergunta adicionada com sucesso!');
             console.log("Question added:", newDocRef.id);
         }
         resetForm();
         loadQuestions();
     } catch (error) {
         console.error("Erro ao salvar pergunta: ", error);
-        alert('Ocorreu um erro ao salvar.');
+        showAlert('Ocorreu um erro ao salvar.');
     }
 });
 
@@ -206,12 +207,12 @@ questionsTbody.addEventListener('click', async (e) => {
         if (confirm('Tem certeza que deseja excluir esta pergunta?')) {
             try {
                 await deleteDoc(doc(db, "perguntas", id));
-                alert('Pergunta excluída com sucesso!');
+                showAlert('Pergunta excluída com sucesso!');
                 console.log("Question deleted:", id);
                 loadQuestions();
             } catch (error) {
                 console.error("Erro ao excluir pergunta:", error);
-                alert("Ocorreu um erro ao excluir.");
+                showAlert("Ocorreu um erro ao excluir.");
             }
         }
     }
@@ -252,7 +253,7 @@ exportBtn.addEventListener('click', async () => {
             perguntas.push(data);
         });
         if (perguntas.length === 0) {
-            alert("Nenhuma pergunta para exportar.");
+            showAlert("Nenhuma pergunta para exportar.");
             console.warn("No questions to export.");
             return;
         }
@@ -269,7 +270,7 @@ exportBtn.addEventListener('click', async () => {
         console.log(`${perguntas.length} questions exported successfully.`);
     } catch (error) {
         console.error("Erro ao exportar perguntas:", error);
-        alert("Ocorreu um erro ao exportar as perguntas.");
+        showAlert("Ocorreu um erro ao exportar as perguntas.");
     }
 });
 
@@ -277,7 +278,7 @@ importBtn.addEventListener('click', () => {
     console.log("Import questions button clicked.");
     const file = importFileInput.files[0];
     if (!file) {
-        alert("Por favor, selecione um arquivo JSON.");
+        showAlert("Por favor, selecione um arquivo JSON.");
         console.warn("No file selected for import.");
         return;
     }
@@ -286,7 +287,7 @@ importBtn.addEventListener('click', () => {
         try {
             const perguntas = JSON.parse(event.target.result);
             if (!Array.isArray(perguntas) || perguntas.length === 0) {
-                alert("Arquivo JSON inválido ou vazio.");
+                showAlert("Arquivo JSON inválido ou vazio.");
                 console.warn("Invalid or empty JSON file for import.");
                 return;
             }
@@ -311,13 +312,13 @@ importBtn.addEventListener('click', () => {
                 }
             });
             await batch.commit();
-            alert(`${importedCount} perguntas importadas com sucesso!`);
+            showAlert(`${importedCount} perguntas importadas com sucesso!`);
             console.log(`${importedCount} questions imported successfully.`);
             loadQuestions();
             importFileInput.value = '';
         } catch (error) {
             console.error("Erro ao importar perguntas:", error);
-            alert("Erro ao processar o arquivo JSON ou importar perguntas.");
+            showAlert("Erro ao processar o arquivo JSON ou importar perguntas.");
         }
     };
     reader.readAsText(file);
@@ -460,12 +461,12 @@ if (suggestionsTbody) {
                     console.log("Subcollection 'respostas' deleted for suggestion ID:", id);
 
                     await deleteDoc(doc(db, "sugestoes", id)); // Exclui o documento da sugestão principal
-                    alert('Sugestão excluída com sucesso!');
+                    showAlert('Sugestão excluída com sucesso!');
                     console.log("Suggestion document deleted for ID:", id);
                     loadSuggestions(true); // Recarrega a lista
                 } catch (error) {
                     console.error("Erro ao excluir sugestão:", error);
-                    alert("Ocorreu um erro ao excluir a sugestão.");
+                    showAlert("Ocorreu um erro ao excluir a sugestão.");
                 }
             }
         }
@@ -499,12 +500,12 @@ if (sendResponseBtn) {
 
         const responseText = responseTextarea.value.trim();
         if (!responseText) {
-            alert('Por favor, escreva uma resposta.');
+            showAlert('Por favor, escreva uma resposta.');
             console.warn("Response text is empty.");
             return;
         }
         if (responseText.length > 500) {
-            alert('A resposta não pode ter mais de 500 caracteres.');
+            showAlert('A resposta não pode ter mais de 500 caracteres.');
             console.warn("Response text too long.");
             return;
         }
@@ -535,7 +536,7 @@ if (sendResponseBtn) {
 
             await batch.commit(); // Executa todas as operações do batch atomicamente
 
-            alert('Resposta enviada com sucesso!');
+            showAlert('Resposta enviada com sucesso!');
             console.log("Response sent successfully.");
             respondSuggestionModal.classList.remove('visible');
             loadSuggestions(true); // Recarrega a lista para mostrar o status atualizado
@@ -543,7 +544,7 @@ if (sendResponseBtn) {
 
         } catch (error) {
             console.error("Erro ao enviar resposta:", error);
-            alert("Ocorreu um erro ao enviar a resposta.");
+            showAlert("Ocorreu um erro ao enviar a resposta.");
         } finally {
             sendResponseBtn.disabled = false;
             sendResponseBtn.textContent = 'Enviar Resposta';
@@ -862,10 +863,12 @@ async function loadAdminGroups(clear = true) {
             // Firestore não permite "LIKE" ou "CONTAINS" diretamente.
             // Para pesquisa de texto completo, você precisaria de uma solução de terceiros (Algolia, ElasticSearch)
             // ou uma lógica mais complexa de "startsWith" para nomes (se eles começarem com o termo)
-            // Por simplicidade, vamos filtrar apenas no lado do cliente (menos eficiente para muitos grupos)
-            // OU, se você quiser filtrar no servidor, seria assim (mas requer que a string comece com o termo):
-            // q = query(baseQuery, where("nomeDoGrupo", ">=", searchTerm), where("nomeDoGrupo", "<=", searchTerm + '\uf8ff'), orderBy("nomeDoGrupo"), limit(10));
             // Por enquanto, apenas leitura paginada, e o filtro seria pós-carregamento.
+            // Para uma pesquisa simples no lado do cliente (se a lista não for enorme):
+            // const allDocs = await getDocs(query(collection(db, "grupos"), orderBy("dataCriacao", "desc")));
+            // newGroups = allDocs.docs.filter(doc => doc.data().nomeDoGrupo.toLowerCase().includes(searchTerm)).map(doc => ({ id: doc.id, ...doc.data() }));
+            // loadMoreAdminGroupsBtn.classList.add('hidden'); // Desabilita paginação se filtrar tudo
+            // ... (Se mantiver filtro de servidor) ...
         }
 
         if (lastVisibleGroup && clear === false) {
@@ -874,9 +877,18 @@ async function loadAdminGroups(clear = true) {
 
         const querySnapshot = await getDocs(q);
         const newGroups = [];
-        querySnapshot.forEach((doc) => {
-            newGroups.push({ id: doc.id, ...doc.data() });
-        });
+        for (const docSnapshot of querySnapshot.docs) { // Usar for...of para await dentro do loop
+            const groupData = docSnapshot.data();
+            // Para cada grupo, buscar os dados do criador
+            let criadorNomeDisplay = groupData.criadorNome || 'N/A';
+            if (groupData.criadorUid) {
+                const criadorDoc = await getDoc(doc(db, 'usuarios', groupData.criadorUid));
+                if (criadorDoc.exists()) {
+                    criadorNomeDisplay = criadorDoc.data().nome;
+                }
+            }
+            newGroups.push({ id: docSnapshot.id, ...groupData, criadorNomeDisplay: criadorNomeDisplay });
+        }
 
         if (clear) {
             adminGroupsTbody.innerHTML = '';
@@ -894,7 +906,7 @@ async function loadAdminGroups(clear = true) {
             const memberCount = group.memberUIDs ? group.memberUIDs.length : 0;
             row.innerHTML = `
                 <td>${group.nomeDoGrupo}</td>
-                <td>${group.criadorNome || 'N/A'}</td>
+                <td>${group.criadorNomeDisplay}</td>
                 <td>${memberCount}</td>
                 <td style="text-transform: capitalize;">${group.difficulty || 'N/A'}</td>
                 <td class="actions-cell">
@@ -1050,7 +1062,8 @@ async function openAdminGroupDetailsModal(groupId) {
                             const silencedUntil = senderData.silenciadoAte && senderData.silenciadoAte.toDate();
                             if (silencedUntil && silencedUntil > new Date()) {
                                 messageElement.classList.add('silenced');
-                                senderName += ' (silenciado)';
+                                // Opcional: mostrar "silenciado" no nome, mas o CSS já pode estilizar a bolha
+                                // senderName += ' (silenciado)'; 
                             }
                         }
                     } else if (msg.systemMessage) { // Mensagens do sistema não têm senderUid
@@ -1085,10 +1098,11 @@ async function silenceMember(groupId, memberUid) {
         return;
     }
 
-    const durationMinutes = parseInt(prompt("Silenciar por quantos minutos? (0 para remover silenciamento)"));
+    const durationInput = prompt("Silenciar por quantos minutos? (0 para remover silenciamento)");
+    const durationMinutes = parseInt(durationInput);
 
-    if (isNaN(durationMinutes)) {
-        showAlert("Duração inválida. Por favor, insira um número.");
+    if (durationInput === null || isNaN(durationMinutes)) { // Usuário cancelou ou digitou algo inválido
+        showAlert("Duração inválida. Operação cancelada.");
         return;
     }
 
@@ -1112,6 +1126,7 @@ async function silenceMember(groupId, memberUid) {
             });
             showAlert(`${userName} silenciado por ${durationMinutes} minuto(s).`);
         } else {
+            // Se durationMinutes for 0, remove o silenciamento
             batch.update(userToSilenceRef, { silenciadoAte: null }); // Remove o campo
             batch.add(groupChatRef, {
                 text: `${userName} foi liberado do silenciamento pelo administrador.`,
@@ -1124,7 +1139,7 @@ async function silenceMember(groupId, memberUid) {
         await batch.commit();
         // O modal de detalhes do grupo se atualizará automaticamente via onSnapshot
         // Recarregar os dados do grupo no modal para atualizar o status do botão "Silenciar"
-        await openAdminGroupDetailsModal(groupId);
+        await openAdminGroupDetailsModal(groupId); // Recarregar para atualizar o botão de silenciar
 
     } catch (error) {
         console.error("Erro ao silenciar membro:", error);
