@@ -181,22 +181,34 @@ body { font-family: var(--font-family-body); background: var(--gray-color); colo
 .ranking-table .score { font-weight: 700; font-size: 1.2rem; text-align: right; }
 
 /* Estilos específicos para a div de ações do grupo em `grupo.html` */
+/* Ajuste de largura mínima para os botões e wrap */
 .group-actions {
     display: flex;
     flex-wrap: wrap; /* Permite que os botões quebrem para a próxima linha */
     justify-content: center; /* Centraliza os botões */
     gap: 10px; /* Espaço entre os botões */
     margin-top: 2rem;
-    margin-bottom: 2rem; /* Adiciona margem abaixo se necessário */
+    margin-bottom: 2rem;
     padding: 0 10px; /* Adiciona um pequeno padding horizontal para evitar que fiquem colados nas bordas */
 }
+
+.group-actions .btn {
+    flex-basis: auto; /* Permite que o item cresça/encolha conforme o conteúdo */
+    min-width: 120px; /* Garante uma largura mínima para os botões */
+    flex-grow: 1; /* Permite que os botões preencham o espaço disponível */
+    max-width: 180px; /* Limita a largura máxima para não ficarem muito grandes em telas largas */
+    padding: 14px 10px; /* Ajusta o padding para caber o texto */
+    font-size: 0.9rem; /* Reduz um pouco o tamanho da fonte */
+}
+
 
 /* Ajustes para botões menores em telas pequenas para evitar quebras estranhas */
 @media (max-width: 480px) {
     .group-actions .btn {
         flex-grow: 1; /* Faz os botões crescerem para preencher a largura disponível */
-        font-size: 0.9rem; /* Reduz um pouco a fonte */
+        font-size: 0.8rem; /* Reduz um pouco a fonte */
         padding: 10px 15px; /* Ajusta o padding */
+        min-width: unset; /* Remove min-width em telas muito pequenas para permitir mais flexibilidade */
     }
 }
 
