@@ -179,7 +179,27 @@ body { font-family: var(--font-family-body); background: var(--gray-color); colo
 .ranking-table .member-info { display: flex; align-items: center; gap: 15px; justify-content: space-between; }
 .ranking-table .member-info img { width: 40px; height: 40px; border-radius: 50%; }
 .ranking-table .score { font-weight: 700; font-size: 1.2rem; text-align: right; }
-.group-actions { margin-top: 2rem; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+/* Estilos específicos para a div de ações do grupo em `grupo.html` */
+.group-actions {
+    display: flex;
+    flex-wrap: wrap; /* Permite que os botões quebrem para a próxima linha */
+    justify-content: center; /* Centraliza os botões */
+    gap: 10px; /* Espaço entre os botões */
+    margin-top: 2rem;
+    margin-bottom: 2rem; /* Adiciona margem abaixo se necessário */
+    padding: 0 10px; /* Adiciona um pequeno padding horizontal para evitar que fiquem colados nas bordas */
+}
+
+/* Ajustes para botões menores em telas pequenas para evitar quebras estranhas */
+@media (max-width: 480px) {
+    .group-actions .btn {
+        flex-grow: 1; /* Faz os botões crescerem para preencher a largura disponível */
+        font-size: 0.9rem; /* Reduz um pouco a fonte */
+        padding: 10px 15px; /* Ajusta o padding */
+    }
+}
+
 .icon-selection { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 15px; margin-top: 1rem; }
 .icon-selection i { font-size: 2.5rem; padding: 15px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: background-color 0.2s, transform 0.2s, border-color 0.2s; }
 .icon-selection i:hover { background-color: var(--gray-color); transform: scale(1.1); }
@@ -743,182 +763,5 @@ body.tema-crianca .option-btn.wrong {
     #moderator-request-form {
         padding-top: 15px; /* Reduz o padding superior do formulário */
         margin-top: 15px; /* Reduz a margem superior do formulário */
-    }
-}
-/* --- Modal de seleção de membro (para transferir moderação) --- */
-#transfer-moderation-modal .modal-content {
-    max-width: 400px;
-    padding: 20px;
-    text-align: left;
-}
-
-#transfer-moderation-modal ul {
-    list-style: none;
-    padding: 0;
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    margin-bottom: 15px;
-}
-
-#transfer-moderation-modal ul li {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-#transfer-moderation-modal ul li:last-child {
-    border-bottom: none;
-}
-
-#transfer-moderation-modal ul li:hover {
-    background-color: var(--gray-color);
-}
-
-#transfer-moderation-modal ul li img {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-}
-
-
-/* --- Modal de Detalhes do Grupo no Admin --- */
-#admin-group-details-modal .modal-content {
-    max-width: 900px; /* Mais largo para caber ranking e chat */
-    padding: 30px;
-    text-align: left;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-#admin-group-details-modal .group-details-header {
-    text-align: center;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 15px;
-    margin-bottom: 15px;
-}
-
-#admin-group-details-modal .group-details-header h3 {
-    font-size: 1.8rem;
-    color: var(--primary-color);
-    margin-bottom: 5px;
-}
-
-#admin-group-details-modal .group-details-header p {
-    font-size: 0.9rem;
-    color: #666;
-}
-
-#admin-group-details-modal .details-sections {
-    display: flex;
-    flex-wrap: wrap; /* Permite quebrar em colunas em telas menores */
-    gap: 20px;
-}
-
-#admin-group-details-modal .details-section-left,
-#admin-group-details-modal .details-section-right {
-    flex: 1; /* Ocupa espaço igual */
-    min-width: 300px; /* Largura mínima para evitar encolhimento excessivo */
-}
-
-#admin-group-details-modal .details-section-left h4,
-#admin-group-details-modal .details-section-right h4 {
-    font-size: 1.3rem;
-    margin-bottom: 15px;
-    color: var(--secondary-color);
-}
-
-/* Ranking dentro do modal de admin */
-#admin-group-details-modal .admin-ranking-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 15px;
-}
-
-#admin-group-details-modal .admin-ranking-table th,
-#admin-group-details-modal .admin-ranking-table td {
-    border-bottom: 1px solid #eee;
-    padding: 8px 0;
-    text-align: left;
-}
-
-#admin-group-details-modal .admin-ranking-table td.member-actions {
-    text-align: right;
-    white-space: nowrap; /* Evita que os botões quebrem linha */
-}
-
-#admin-group-details-modal .admin-ranking-table .member-info-with-button {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-}
-
-#admin-group-details-modal .admin-ranking-table .member-info-with-button img {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-}
-
-#admin-group-details-modal .admin-ranking-table .member-actions .btn-small {
-    padding: 6px 10px;
-    font-size: 0.8rem;
-}
-
-/* Chat dentro do modal de admin */
-#admin-group-details-modal .admin-chat-messages {
-    height: 250px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 1rem;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    background-color: var(--gray-color);
-}
-
-#admin-group-details-modal .admin-chat-message {
-    display: flex;
-    flex-direction: column;
-}
-#admin-group-details-modal .admin-chat-message.silenced .message-bubble {
-    opacity: 0.6;
-    font-style: italic;
-    background-color: #ffe0b2; /* Laranja claro para silenciado */
-}
-#admin-group-details-modal .admin-chat-message.system-message .message-bubble {
-    background-color: #e0e0e0;
-    color: #444;
-    text-align: center;
-    font-style: italic;
-}
-
-
-/* Media query para modais em telas menores */
-@media (max-width: 768px) {
-    #admin-group-details-modal .modal-content {
-        padding: 15px;
-        max-width: 95%;
-        max-height: 90vh; /* Para garantir rolagem em altura */
-    }
-    #admin-group-details-modal .details-sections {
-        flex-direction: column; /* Empilha as seções */
-    }
-    #admin-group-details-modal .details-section-left,
-    #admin-group-details-modal .details-section-right {
-        min-width: unset; /* Remove largura mínima ao empilhar */
-        width: 100%;
-    }
-    #admin-group-details-modal .admin-ranking-table .member-actions {
-        display: flex;
-        flex-direction: column; /* Empilha botões de ação do membro */
-        gap: 5px;
-        align-items: flex-end;
     }
 }
