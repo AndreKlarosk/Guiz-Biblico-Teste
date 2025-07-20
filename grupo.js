@@ -350,10 +350,24 @@ if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
 });
 
 async function deleteGroup() {
+    if (!currentUser || !groupData || currentUser.uid !== groupData.criadorUid) {
+        alert("Você não tem permissão para excluir este grupo.");
+        return;
+    }
+
     if (confirm(`Tem a certeza que deseja excluir o grupo "${groupData.nomeDoGrupo}"? Esta ação não pode ser desfeita.`)) {
         try {
+            // Exclui o documento do grupo
             await deleteDoc(doc(db, 'grupos', groupId));
+
+            // Remove o ID do grupo do array 'gruposCriados' do criador
+            const userRef = doc(db, 'usuarios', currentUser.uid);
+            await updateDoc(userRef, {
+                gruposCriados: arrayRemove(groupId)
+            });
+
             alert("Grupo excluído com sucesso.");
+            // Redireciona para a página inicial
             window.location.href = 'index.html';
         } catch (error) {
             console.error("Erro ao excluir grupo:", error);
