@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil do Jogador</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div id="profile-container" class="container" style="max-width: 800px;">
+        <div id="loading-profile"><h2>Carregando perfil...</h2></div>
+        <div id="profile-content" class="hidden">
+            <header class="header">
+                <a href="/index.html" class="btn btn-secondary back-link"><i class="fas fa-arrow-left"></i> Voltar</a>
+                <div class="user-info">
+                    <div id="notification-bell" class="notification-bell hidden">
+                        <i class="fas fa-bell"></i>
+                        <span id="notification-count" class="notification-count">0</span>
+                    </div>
+                    <div id="profile-header-user-info" style="display: flex; align-items: center; gap: 10px;">
+                        <div id="profile-photo-container-header" class="profile-photo-container">
+                            <img id="profile-photo-header" src="https://placehold.co/45x45/e0e0e0/333?text=?" alt="Foto do Usuário">
+                        </div>
+                        <span id="profile-name-header" style="font-weight: 600;"></span>
+                    </div>
+                </div>
+            </header>
+            
+            <header class="profile-header" style="margin-top: 0;">
+                <div id="profile-photo-container" class="profile-photo-container">
+                    <img id="profile-photo" src="https://placehold.co/150x150/e0e0e0/333?text=?" alt="Foto do Perfil">
+                </div>
+                <div class="profile-info">
+                    <h2 id="profile-name">Nome do Jogador</h2>
+                    <p id="profile-bio">Carregando bio...</p>
+                    <div id="profile-buttons" style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+                        <button id="edit-bio-btn" class="btn btn-small hidden"><i class="fas fa-pencil-alt"></i> Editar Bio</button>
+                        <button id="change-border-btn" class="btn btn-small hidden"><i class="fas fa-palette"></i> Mudar Borda</button>
+                        <button id="share-profile-btn" class="btn btn-small btn-secondary"><i class="fas fa-share-alt"></i> Compartilhar</button>
+                        <button id="send-suggestion-btn" class="btn btn-small"><i class="fas fa-envelope"></i> Enviar Sugestão</button>
+                    </div>
+                </div>
+            </header>
+            <section class="profile-stats">
+                <h3>Estatísticas</h3>
+                <div class="stats-grid">
+                    <div class="stat-card"><h4>Pontuação Total</h4><p id="stat-score">0</p></div>
+                    <div class="stat-card" style="background-color: #e8f5e9;"><h4>Pontos (Fácil)</h4><p id="stat-score-facil">0</p></div>
+                    <div class="stat-card" style="background-color: #fff9c4;"><h4>Pontos (Médio)</h4><p id="stat-score-medio">0</p></div>
+                    <div class="stat-card" style="background-color: #ffebee;"><h4>Pontos (Difícil)</h4><p id="stat-score-dificil">0</p></div>
+                    <div class="stat-card"><h4>Quizzes Jogados</h4><p id="stat-quizzes">0</p></div>
+                    <div class="stat-card"><h4>Respostas Certas</h4><p id="stat-correct">0</p></div>
+                    <div class="stat-card"><h4>Taxa de Acerto</h4><p id="stat-accuracy">0%</p></div>
+                </div>
+            </section>
+            <section class="profile-achievements">
+                <h3>Conquistas</h3>
+                <div id="achievements-grid" class="achievements-grid"></div>
+            </section>
+            
+            <section id="profile-settings" class="profile-settings hidden">
+                <h3>Configurações</h3>
+                <div class="settings-item">
+                    <label for="show-in-ranking-checkbox">Mostrar meu perfil no Ranking Geral</label>
+                    <input type="checkbox" id="show-in-ranking-checkbox">
+                </div>
+                <div class="settings-item" style="margin-top: 1rem; flex-wrap: wrap;">
+                    <label for="dob-input" style="margin-bottom: 0.5rem;">Sua Data de Nascimento</label>
+                    <div style="display: flex; gap: 10px; width: 100%;">
+                        <input type="date" id="dob-input" style="flex-grow: 1; padding: 8px;">
+                        <button id="save-dob-btn" class="btn btn-small">Salvar</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <div id="profile-not-found" class="hidden">
+            <h2>Perfil não encontrado</h2>
+            <p>O jogador que você está procurando não existe.</p>
+            <a href="/index.html" class="btn">Voltar ao Início</a>
+        </div>
+    </div>
+
+    <div id="edit-bio-modal" class="modal">
+        <div class="modal-content">
+            <h3>Editar sua Biografia</h3>
+            <textarea id="bio-textarea" rows="4" maxlength="150"></textarea>
+            <button id="save-bio-btn" class="btn">Salvar</button>
+            <button id="cancel-bio-btn" class="btn btn-secondary">Cancelar</button>
+        </div>
+    </div>
+    <div id="borders-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-borders-modal">&times;</span>
+            <h3>Escolha sua Borda</h3>
+            <div id="borders-grid-modal" class="icon-selection" style="grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));">
+                </div>
+        </div>
+    </div>
+
+    <div id="suggestion-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-suggestion-modal">&times;</span>
+            <h3>Enviar Sugestão</h3>
+            <textarea id="suggestion-textarea" rows="6" maxlength="500" placeholder="Escreva aqui sua ideia…"></textarea>
+            <button id="send-suggestion-modal-btn" class="btn">Enviar</button>
+            <button id="cancel-suggestion-modal-btn" class="btn btn-secondary">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="notifications-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-notifications-modal">&times;</span>
+            <h3>Suas Sugestões Respondidas</h3>
+            <div id="responded-suggestions-list" class="responded-suggestions-list">
+                <p>Nenhuma sugestão respondida ainda.</p>
+            </div>
+            <button id="mark-all-as-read-btn" class="btn hidden">Marcar todas como lidas</button>
+        </div>
+    </div>
+
+    <script type="module" src="perfil.js"></script>
+</body>
+</html>

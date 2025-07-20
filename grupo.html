@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes do Grupo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container" style="max-width: 800px;">
+        <div id="loading-group"><h2>A carregar grupo...</h2></div>
+
+        <div id="group-content" class="hidden">
+            <a href="/index.html" class="btn btn-secondary back-link"><i class="fas fa-arrow-left"></i> Voltar</a>
+            <header class="group-header">
+                <div id="group-icon" class="group-icon"></div>
+                <h2 id="group-name">Nome do Grupo</h2>
+                <p>Criado por: <span id="group-creator"></span></p>
+                <p>Dificuldade: <strong id="group-difficulty" style="text-transform: capitalize;"></strong></p>
+            </header>
+            <section class="group-ranking">
+                <h3><i class="fas fa-trophy"></i> Ranking do Grupo</h3>
+                <table class="ranking-table">
+                    <thead>
+                        <tr>
+                            <th class="rank">#</th>
+                            <th>Membro</th>
+                            <th class="score">Pontos</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-tbody"></tbody>
+                </table>
+            </section>
+            <div id="group-actions" class="group-actions"></div>
+
+            <section id="group-chat" class="group-chat hidden">
+                <h3><i class="fas fa-comments"></i> Chat do Grupo</h3>
+                <div id="chat-messages" class="chat-messages">
+                    </div>
+                <form id="chat-form" class="chat-form">
+                    <input type="text" id="chat-input" placeholder="Escreva uma mensagem..." autocomplete="off">
+                    <button type="submit" class="btn"><i class="fas fa-paper-plane"></i></button>
+                </form>
+            </section>
+        </div>
+        
+        <div id="group-not-found" class="hidden">
+            <h2>Grupo não encontrado</h2>
+            <p>O link que acedeu pode estar quebrado ou o grupo foi excluído.</p>
+            <a href="/index.html" class="btn">Voltar ao Início</a>
+        </div>
+    </div>
+    
+    <div id="edit-group-modal" class="modal">
+        <div class="modal-content">
+            <h3>Editar Grupo</h3>
+            <label for="edit-group-name-input">Nome do Grupo</label>
+            <input type="text" id="edit-group-name-input" placeholder="Nome do seu grupo" maxlength="50">
+            <label for="edit-group-difficulty-select" style="margin-top: 1rem; display: block;">Nível de Dificuldade Padrão</label>
+            <select id="edit-group-difficulty-select" class="styled-select">
+                <option value="facil">Fácil</option>
+                <option value="medio">Médio</option>
+                <option value="dificil">Difícil</option>
+            </select>
+            <label style="margin-top: 1rem; display: block;">Ícone do Grupo</label>
+            <div id="icon-selection" class="icon-selection"></div>
+            <button id="save-group-btn" class="btn">Salvar Alterações</button>
+            <button id="cancel-group-btn" class="btn btn-secondary">Cancelar</button>
+        </div>
+    </div>
+
+    <script type="module" src="grupo.js"></script>
+</body>
+</html>

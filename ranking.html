@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking Geral - Quiz Bíblico</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .ranking-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; justify-content: center; flex-wrap: wrap; }
+        .ranking-tabs .btn { background: #6c757d; text-transform: none; }
+        .ranking-tabs .btn.active { background: var(--primary-color); }
+    </style>
+</head>
+<body>
+    <div class="container" style="max-width: 800px;">
+        <div id="ranking-content">
+            <a href="/index.html" class="btn btn-secondary back-link"><i class="fas fa-arrow-left"></i> Voltar</a>
+            <header class="ranking-header">
+                <h2><i class="fas fa-trophy"></i> Ranking Geral</h2>
+                <p>Os melhores jogadores do Quiz Bíblico!</p>
+            </header>
+            
+            <div class="ranking-tabs">
+                <button class="btn active" data-ranking="Total">Geral</button>
+                <button class="btn" data-ranking="Dificil">Difícil</button>
+                <button class="btn" data-ranking="Medio">Médio</button>
+                <button class="btn" data-ranking="Facil">Fácil</button>
+            </div>
+
+            <section class="general-ranking">
+                <div class="table-wrapper">
+                    <table class="ranking-table">
+                        <thead>
+                            <tr>
+                                <th class="rank">#</th>
+                                <th>Jogador</th>
+                                <th class="score" id="ranking-score-header">Pontuação Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ranking-tbody">
+                            <tr><td colspan="3">Carregando ranking...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+    <script type="module" src="ranking.js"></script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Administração</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="admin-panel" class="container">
+        <header class="header">
+            <h1>Painel de Admin</h1>
+            <a href="/index.html">← Voltar ao Quiz</a>
+        </header>
+        
+        <main id="admin-content" class="hidden">
+            <div class="admin-form">
+                <h3>Gerenciamento em Massa</h3>
+                <label for="import-file">Importar perguntas de arquivo JSON:</label>
+                <input type="file" id="import-file" accept=".json">
+                <button id="import-btn" class="btn">Importar</button>
+                <hr>
+                <button id="export-btn" class="btn">Exportar Todas as Perguntas</button>
+            </div>
+
+            <div class="admin-form">
+                <h3 id="form-title">Adicionar Nova Pergunta</h3>
+                <input type="hidden" id="question-id">
+                <input type="text" id="enunciado" placeholder="Enunciado da pergunta">
+                <input type="text" id="alt1" placeholder="Alternativa 1">
+                <input type="text" id="alt2" placeholder="Alternativa 2">
+                <input type="text" id="alt3" placeholder="Alternativa 3">
+                <input type="text" id="alt4" placeholder="Alternativa 4">
+                <select id="correta">
+                    <option value="0">Alternativa 1 é a correta</option>
+                    <option value="1">Alternativa 2 é a correta</option>
+                    <option value="2">Alternativa 3 é a correta</option>
+                    <option value="3">Alternativa 4 é a correta</option>
+                </select>
+                <select id="nivel">
+                    <option value="facil">Fácil</option>
+                    <option value="medio">Médio</option>
+                    <option value="dificil">Difícil</option>
+                </select>
+                <input type="text" id="tema" placeholder="Tema (ex: personagens)">
+                <input type="text" id="referencia" placeholder="Referência (ex: Gênesis 1:1)">
+                
+                <div id="faixa-etaria-container" style="text-align: left; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <strong>Faixa Etária:</strong>
+                    <div>
+                        <input type="checkbox" id="faixa-crianca" value="crianca">
+                        <label for="faixa-crianca">Criança (6-10)</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="faixa-adolescente" value="adolescente">
+                        <label for="faixa-adolescente">Adolescente (11-16)</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="faixa-adulto" value="adulto" checked>
+                        <label for="faixa-adulto">Adulto (17+)</label>
+                    </div>
+                </div>
+
+                <button id="save-question-btn" class="btn">Salvar</button>
+                <button id="cancel-edit-btn" class="btn hidden" style="background: #888;">Cancelar Edição</button>
+            </div>
+
+            <h2>Perguntas Cadastradas</h2>
+            <div class="table-container">
+                <table id="questions-table">
+                    <thead>
+                        <tr><th>Enunciado</th><th>Nível</th><th>Ações</th></tr>
+                    </thead>
+                    <tbody id="questions-tbody"></tbody>
+                </table>
+            </div>
+
+            <h2 style="margin-top: 3rem;">Sugestões dos Usuários</h2>
+            <div class="admin-form" style="padding-top: 0; background-color: transparent; border: none;">
+                <label for="filter-status">Filtrar por Status:</label>
+                <select id="filter-status">
+                    <option value="all">Todas</option>
+                    <option value="pending">Pendentes</option>
+                    <option value="responded">Respondidas</option>
+                </select>
+            </div>
+            <div class="table-container">
+                <table id="suggestions-table">
+                    <thead>
+                        <tr><th>Usuário</th><th>Mensagem</th><th>Data</th><th>Status</th><th>Ações</th></tr>
+                    </thead>
+                    <tbody id="suggestions-tbody"></tbody>
+                </table>
+            </div>
+            <button id="load-more-suggestions-btn" class="btn hidden" style="margin-top: 1rem;">Carregar Mais Sugestões</button>
+
+            <h2 style="margin-top: 3rem;">Solicitações de Moderador</h2>
+            <div class="admin-form" style="padding-top: 0; background-color: transparent; border: none;">
+                <label for="filter-moderator-status">Filtrar por Status:</label>
+                <select id="filter-moderator-status">
+                    <option value="all">Todas</option>
+                    <option value="pending">Pendentes</option>
+                    <option value="approved">Aprovadas</option>
+                    <option value="rejected">Rejeitadas</option>
+                </select>
+            </div>
+            <div class="table-container">
+                <table id="moderator-requests-table">
+                    <thead>
+                        <tr><th>Usuário</th><th>Plano</th><th>WhatsApp</th><th>Comprovante</th><th>Data</th><th>Status</th><th>Ações</th></tr>
+                    </thead>
+                    <tbody id="moderator-requests-tbody">
+                        <tr><td colspan="7">Nenhuma solicitação de moderador.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <button id="load-more-moderator-requests-btn" class="btn hidden" style="margin-top: 1rem;">Carregar Mais Solicitações</button>
+
+        </main>
+        <div id="auth-guard-message"><h2>Verificando permissões...</h2></div>
+    </div>
+
+    <div id="respond-suggestion-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-respond-suggestion-modal">&times;</span>
+            <h3>Responder Sugestão</h3>
+            <p><strong>Sugestão de:</strong> <span id="suggestion-user-name"></span></p>
+            <p><strong>Mensagem:</strong> <span id="suggestion-message-text"></span></p>
+            <textarea id="response-textarea" rows="6" maxlength="500" placeholder="Escreva sua resposta aqui…"></textarea>
+            <button id="send-response-btn" class="btn">Enviar Resposta</button>
+            <button id="cancel-response-btn" class="btn btn-secondary">Cancelar</button>
+        </div>
+    </div>
+
+    <script type="module" src="admin.js"></script>
+</body>
+</html>
