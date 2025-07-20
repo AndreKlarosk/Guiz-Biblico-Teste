@@ -1,6 +1,7 @@
 import { auth, db } from './firebase.js';
 import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc, setDoc, updateDoc, increment, arrayUnion, collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, limit, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { showAlert } from './utils.js'; // <-- NOVA IMPORTAÇÃO
 
 // --- Elementos da Interface do Usuário (UI) (Específicos da página inicial) ---
 const loginBtn = document.getElementById('login-btn');
@@ -95,13 +96,6 @@ const submitModeratorRequestBtn = document.getElementById('submit-moderator-requ
 const requestConfirmationMessage = document.getElementById('request-confirmation-message');
 const pixModeratorKey = document.getElementById('pix-moderator-key');
 
-// Novos elementos do Modal de Alerta Personalizado
-const customAlertModal = document.getElementById('custom-alert-modal');
-const customAlertTitle = document.getElementById('custom-alert-title');
-const customAlertMessage = document.getElementById('custom-alert-message');
-const customAlertOkBtn = document.getElementById('custom-alert-ok-btn');
-const closeCustomAlertModal = document.getElementById('close-custom-alert-modal');
-
 
 // --- Estado do Quiz e Usuário ---
 let currentUser = null;
@@ -153,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Redireciona para o perfil para ver as notificações completas
                 window.location.href = `perfil.html?uid=${currentUser.uid}`;
             } else {
-                showAlert("Faça login para ver suas notificações."); // SUBSTITUÍDO
+                showAlert("Faça login para ver suas notificações.");
             }
         });
     }
@@ -162,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (becomeModeratorBtn) {
         becomeModeratorBtn.addEventListener('click', () => {
             if (!currentUser) {
-                showAlert("Você precisa estar logado para se tornar um moderador."); // SUBSTITUÍDO
+                showAlert("Você precisa estar logado para se tornar um moderador.");
                 return;
             }
             if (moderatorPlansModal) {
@@ -201,49 +195,14 @@ document.addEventListener('DOMContentLoaded', () => {
         submitModeratorRequestBtn.addEventListener('click', submitModeratorRequest);
     }
 
-    window.addEventListener('click', (event) => {
-        if (event.target == moderatorPlansModal) {
-            moderatorPlansModal.classList.remove('visible');
-        }
-    });
-
-    // Event listeners para o novo Modal de Alerta Personalizado
-    if (customAlertOkBtn) {
-        customAlertOkBtn.addEventListener('click', () => {
-            if (customAlertModal) customAlertModal.classList.remove('visible');
-        });
-    }
-    if (closeCustomAlertModal) {
-        closeCustomAlertModal.addEventListener('click', () => {
-            if (customAlertModal) customAlertModal.classList.remove('visible');
-        });
-    }
+    // Não é mais necessário adicionar listener window.onclick aqui para o modal de planos
+    // if (window.event.target == moderatorPlansModal) { ... }
+    // A função showAlert no utils.js lida com seu próprio fechamento.
 });
 
 // --- Funções ---
-// NOVA FUNÇÃO: Alerta Personalizado
-function showAlert(message, title = "Atenção!") {
-    if (customAlertTitle) customAlertTitle.textContent = title;
-    if (customAlertMessage) customAlertMessage.textContent = message;
-    if (customAlertModal) customAlertModal.classList.add('visible');
-
-    // Fechar o modal ao clicar em OK ou no X
-    const closeAlert = () => {
-        if (customAlertModal) customAlertModal.classList.remove('visible');
-        customAlertOkBtn.removeEventListener('click', closeAlert);
-        closeCustomAlertModal.removeEventListener('click', closeAlert);
-    };
-
-    customAlertOkBtn.addEventListener('click', closeAlert);
-    closeCustomAlertModal.addEventListener('click', closeAlert);
-
-    // Opcional: fechar ao clicar fora (se o modal tiver backdrop)
-    window.addEventListener('click', (event) => {
-        if (event.target === customAlertModal) {
-            closeAlert();
-        }
-    }, { once: true }); // Usar { once: true } para remover o listener automaticamente após o primeiro clique
-}
+// Funções de UI (showAlert, getAgeGroup, switchScreen, etc.)
+// A função showAlert foi movida para utils.js e importada.
 
 function getAgeGroup(birthDateString) {
     if (!birthDateString) return "adulto";
@@ -304,7 +263,7 @@ onAuthStateChanged(auth, async (user) => {
         currentUser = user;
         if (loginBtn) loginBtn.classList.add('hidden');
         if (userInfoDiv) userInfoDiv.classList.remove('hidden');
-        // CORREÇÃO: Mostrar o botão de logout quando o usuário está logado
+        // Mostrar o botão de logout quando o usuário está logado
         if (logoutBtn) logoutBtn.classList.remove('hidden'); 
 
         if (userNameSpan) userNameSpan.textContent = user.displayName || "Jogador";
@@ -360,7 +319,7 @@ onAuthStateChanged(auth, async (user) => {
         currentUserData = null;
         if (loginBtn) loginBtn.classList.remove('hidden');
         if (userInfoDiv) userInfoDiv.classList.add('hidden');
-        // CORREÇÃO: Ocultar o botão de logout quando o usuário não está logado
+        // Ocultar o botão de logout quando o usuário não está logado
         if (logoutBtn) logoutBtn.classList.add('hidden'); 
 
         if (mainMenu) mainMenu.classList.add('hidden');
@@ -436,7 +395,7 @@ if(saveDobBtn) {
     saveDobBtn.addEventListener('click', async () => {
         const dobValue = dobInput.value;
         if (!dobValue) {
-            showAlert("Por favor, selecione sua data de nascimento."); // SUBSTITUÍDO
+            showAlert("Por favor, selecione sua data de nascimento.");
             return;
         }
         if (currentUser) {
@@ -452,7 +411,7 @@ if(saveDobBtn) {
                 if(dobModal) dobModal.classList.remove('visible');
             } catch (error) {
                 console.error("Erro ao salvar data de nascimento: ", error);
-                showAlert("Não foi possível salvar a data. Tente novamente."); // SUBSTITUÍDO
+                showAlert("Não foi possível salvar a data. Tente novamente.");
             }
         }
     });
@@ -514,7 +473,7 @@ async function awardAchievement(uid, achievementKey) {
 
 if (createGroupBtn) createGroupBtn.addEventListener('click', async () => {
     if (!currentUser || !currentUserData) {
-        showAlert("Você precisa estar logado para criar um grupo."); // SUBSTITUÍDO
+        showAlert("Você precisa estar logado para criar um grupo.");
         return;
     }
 
@@ -523,7 +482,7 @@ if (createGroupBtn) createGroupBtn.addEventListener('click', async () => {
     console.log("Is moderator:", currentUserData.moderador);
 
     if (!currentUserData.moderador) {
-        showAlert("Você precisa ser um moderador para criar grupos. Clique em 'Tornar-se Moderador' para mais informações."); // SUBSTITUÍDO
+        showAlert("Você precisa ser um moderador para criar grupos. Clique em 'Tornar-se Moderador' para mais informações.");
         return;
     }
 
@@ -534,7 +493,7 @@ if (createGroupBtn) createGroupBtn.addEventListener('click', async () => {
     console.log(`Groups created: ${createdGroupsCount}, Max groups for plan ${currentUserData.plano}: ${maxGroups}`);
 
     if (maxGroups !== undefined && createdGroupsCount >= maxGroups) {
-        showAlert(`Você atingiu o limite de ${maxGroups} grupo(s) para o seu plano (${currentUserData.plano}).`); // SUBSTITUÍDO
+        showAlert(`Você atingiu o limite de ${maxGroups} grupo(s) para o seu plano (${currentUserData.plano}).`);
         return;
     }
 
@@ -545,11 +504,11 @@ if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
     if (!groupNameInput || !groupDifficultySelect) return;
     const groupName = groupNameInput.value.trim();
     if (groupName.length < 3) {
-        showAlert("O nome do grupo deve ter pelo menos 3 caracteres."); // SUBSTITUÍDO
+        showAlert("O nome do grupo deve ter pelo menos 3 caracteres.");
         return;
     }
     if (!currentUser || !currentUserData) {
-        showAlert("Precisa de estar logado para criar um grupo."); // SUBSTITUÍDO
+        showAlert("Precisa de estar logado para criar um grupo.");
         return;
     }
 
@@ -558,7 +517,7 @@ if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
     const maxGroups = MODERATOR_PLANS[currentUserData.plano]?.grupos;
 
     if (maxGroups !== undefined && createdGroupsCount >= maxGroups) {
-        showAlert(`Você atingiu o limite de ${maxGroups} grupo(s) para o seu plano (${currentUserData.plano}).`); // SUBSTITUÍDO
+        showAlert(`Você atingiu o limite de ${maxGroups} grupo(s) para o seu plano (${currentUserData.plano}).`);
         createGroupModal.classList.remove('visible'); // Fecha o modal de criação de grupo
         return;
     }
@@ -593,13 +552,13 @@ if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
         currentUserData.gruposCriados.push(docRef.id); // Atualiza o estado local do currentUserData
 
         await awardAchievement(currentUser.uid, 'fundador_de_grupo');
-        showAlert(`Grupo "${groupName}" criado com sucesso!`); // SUBSTITUÍDO
+        showAlert(`Grupo "${groupName}" criado com sucesso!`);
         groupNameInput.value = '';
         createGroupModal.classList.remove('visible');
         await loadUserGroups(currentUser.uid);
     } catch (error) {
         console.error("Erro ao criar grupo:", error);
-        showAlert("Não foi possível criar o grupo."); // SUBSTITUÍDO
+        showAlert("Não foi possível criar o grupo.");
     } finally {
         saveGroupBtn.disabled = false;
         saveGroupBtn.textContent = 'Criar';
@@ -660,12 +619,12 @@ async function startQuiz(difficulty) {
             switchScreen('quiz-screen');
             displayQuestion();
         } else {
-            showAlert(`Não foram encontradas perguntas para a dificuldade ${difficulty}.`); // SUBSTITUÍDO
+            showAlert(`Não foram encontradas perguntas para a dificuldade ${difficulty}.`);
             switchScreen('initial-screen');
         }
     } catch (error) {
         console.error("Erro ao buscar perguntas: ", error);
-        showAlert("Ocorreu um erro ao carregar as perguntas."); // SUBSTITUÍDO
+        showAlert("Ocorreu um erro ao carregar as perguntas.");
     }
 }
 
@@ -786,7 +745,7 @@ async function checkAndAwardAchievements(userRef, currentQuizScore, currentQuizC
     if (newAchievements.length > 0) {
         await updateDoc(userRef, { conquistas: arrayUnion(...newAchievements) });
         setTimeout(() => {
-            showAlert(`Parabéns! Você desbloqueou ${newAchievements.length} nova(s) conquista(s)!`); // SUBSTITUÍDO
+            showAlert(`Parabéns! Você desbloqueou ${newAchievements.length} nova(s) conquista(s)!`);
         }, 500);
     }
 }
@@ -853,7 +812,7 @@ async function loadChapterText() {
         bibleTextDisplay.innerHTML = chapterHtml;
     } catch (error) {
         console.error("Erro ao buscar capítulo da Bíblia:", error);
-        showAlert("Erro ao carregar o capítulo. Tente novamente."); // SUBSTITUÍDO
+        showAlert("Erro ao carregar o capítulo. Tente novamente.");
     }
 }
 if (bibleCard) bibleCard.addEventListener('click', () => { if (bibleModal) bibleModal.classList.add('visible'); });
@@ -875,14 +834,14 @@ if (cancelCreateCompetitionBtn) cancelCreateCompetitionBtn.addEventListener('cli
     if(createCompetitionModal) createCompetitionModal.classList.remove('visible');
 });
 if (createCompetitionBtn) createCompetitionBtn.addEventListener('click', async () => {
-    if (!currentUser) return showAlert("Você precisa estar logado."); // SUBSTITUÍDO
+    if (!currentUser) return showAlert("Você precisa estar logado.");
     
     const difficulty = competitionDifficultySelect.value;
     const numQuestions = parseInt(competitionQuestionsSelect.value);
     const minPlayers = parseInt(competitionMinPlayersInput.value);
 
     if(minPlayers < 2) {
-        showAlert("O mínimo de participantes deve ser 2 ou mais."); // SUBSTITUÍDO
+        showAlert("O mínimo de participantes deve ser 2 ou mais.");
         return;
     }
     
@@ -942,7 +901,7 @@ if (createCompetitionBtn) createCompetitionBtn.addEventListener('click', async (
 
     } catch (error) {
         console.error("Erro ao criar competição:", error);
-        showAlert(error.message); // SUBSTITUÍDO
+        showAlert(error.message);
     } finally {
         createCompetitionBtn.disabled = false;
         createCompetitionBtn.textContent = "Criar Sala";
@@ -951,10 +910,10 @@ if (createCompetitionBtn) createCompetitionBtn.addEventListener('click', async (
     }
 });
 if (joinCompetitionBtn) joinCompetitionBtn.addEventListener('click', async () => {
-    if (!currentUser) return showAlert("Você precisa estar logado."); // SUBSTITUÍDO
+    if (!currentUser) return showAlert("Você precisa estar logado.");
     
     const code = joinCodeInput.value.trim().toUpperCase();
-    if (code.length < 5) return showAlert("Código inválido."); // SUBSTITUÍDO
+    if (code.length < 5) return showAlert("Código inválido.");
 
     joinCompetitionBtn.disabled = true;
     joinCompetitionBtn.textContent = "...";
@@ -984,7 +943,7 @@ if (joinCompetitionBtn) joinCompetitionBtn.addEventListener('click', async () =>
 
     } catch (error) {
         console.error("Erro ao entrar na competição:", error);
-        showAlert(error.message); // SUBSTITUÍDO
+        showAlert(error.message);
     } finally {
         joinCompetitionBtn.disabled = false;
         joinCompetitionBtn.textContent = "Entrar";
@@ -1016,7 +975,7 @@ function showWaitingRoom(isCreator) {
 
     unsubscribeCompetition = onSnapshot(doc(db, 'competicoes', activeCompetitionId), (docSnapshot) => {
         if (!docSnapshot.exists()) {
-            showAlert("A sala de competição foi fechada pelo criador."); // SUBSTITUÍDO
+            showAlert("A sala de competição foi fechada pelo criador.");
             leaveWaitingRoom();
             return;
         }
@@ -1053,6 +1012,7 @@ function showWaitingRoom(isCreator) {
             const playerCount = participantesArray.length;
             if(playerCount >= data.minParticipantes) {
                 startCompetitionBtn.disabled = false;
+                startRequirementMessage.textContent = ''; // Limpa mensagem
                 startRequirementMessage.classList.add('hidden');
             } else {
                 startCompetitionBtn.disabled = true;
@@ -1064,7 +1024,7 @@ function showWaitingRoom(isCreator) {
         if (data.estado === 'em_andamento') {
             if (unsubscribeCompetition) unsubscribeCompetition();
             if(waitingRoomModal) waitingRoomModal.classList.remove('visible');
-            showAlert("A competição vai começar!"); // SUBSTITUÍDO
+            showAlert("A competição vai começar!");
             startCompetitionQuiz(data.perguntas);
         }
     });
@@ -1114,7 +1074,7 @@ if(chatFormWaitingRoom) {
             });
         } catch(error) {
             console.error("Erro ao enviar mensagem:", error);
-            showAlert("Não foi possível enviar a sua mensagem."); // SUBSTITUÍDO
+            showAlert("Não foi possível enviar a sua mensagem.");
         }
     });
 }
@@ -1132,7 +1092,7 @@ function startCompetitionQuiz(competitionQuestions) {
         switchScreen('quiz-screen');
         displayQuestion();
     } else {
-        showAlert("Erro: Nenhuma pergunta foi carregada para a competição."); // SUBSTITUÍDO
+        showAlert("Erro: Nenhuma pergunta foi carregada para a competição.");
         switchScreen('initial-screen');
     }
 }
@@ -1242,7 +1202,7 @@ if (copyPixKeyBtn) {
             }, 2000);
         }).catch(err => {
             console.error('Erro ao copiar a chave PIX:', err);
-            showAlert('Não foi possível copiar a chave.'); // SUBSTITUÍDO
+            showAlert('Não foi possível copiar a chave.');
         });
     });
 }
@@ -1250,23 +1210,23 @@ if (copyPixKeyBtn) {
 // --- Lógica do Novo Modo de Moderador ---
 async function submitModeratorRequest() {
     if (!currentUser) {
-        showAlert("Você precisa estar logado para enviar uma solicitação."); // SUBSTITUÍDO
+        showAlert("Você precisa estar logado para enviar uma solicitação.");
         return;
     }
     if (!selectedPlan) {
-        showAlert("Por favor, selecione um plano."); // SUBSTITUÍDO
+        showAlert("Por favor, selecione um plano.");
         return;
     }
 
     const whatsapp = whatsappInput.value.trim();
 
     if (!whatsapp) {
-        showAlert("Por favor, preencha seu número de WhatsApp."); // SUBSTITUÍDO
+        showAlert("Por favor, preencha seu número de WhatsApp.");
         return;
     }
 
     if (!/^\d+$/.test(whatsapp)) {
-        showAlert("O número de WhatsApp deve conter apenas números."); // SUBSTITUÍDO
+        showAlert("O número de WhatsApp deve conter apenas números.");
         return;
     }
 
@@ -1296,7 +1256,7 @@ async function submitModeratorRequest() {
         planCards.forEach(card => card.classList.remove('selected')); // Desmarcar seleção visual
     } catch (error) {
         console.error("Erro ao enviar solicitação de moderador:", error);
-        showAlert("Ocorreu um erro ao enviar sua solicitação. Tente novamente."); // SUBSTITUÍDO
+        showAlert("Ocorreu um erro ao enviar sua solicitação. Tente novamente.");
     } finally {
         submitModeratorRequestBtn.disabled = false;
         submitModeratorRequestBtn.textContent = 'Submeter Solicitação';
