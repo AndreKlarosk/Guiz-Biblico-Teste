@@ -638,6 +638,11 @@ async function updateModeratorStatus(requestId, status) {
 
 // NOVA FUNÇÃO: Desativar Moderador
 async function deactivateModerator(userId, requestId) {
+    if (!userId) { // Adiciona esta verificação
+        console.error("Erro: userId é indefinido ou nulo ao desativar moderador.");
+        alert("Não foi possível desativar o moderador. ID de usuário inválido.");
+        return;
+    }
     const userRef = doc(db, 'usuarios', userId);
     const requestRef = doc(db, 'solicitacoesModerador', requestId);
 
@@ -648,18 +653,45 @@ async function deactivateModerator(userId, requestId) {
         batch.update(userRef, {
             moderador: false,
             plano: null,
-            gruposCriados: [], // Importante para resetar a contagem de grupos
+            gruposCriados: [],
             dataAtivacao: null
         });
 
-        // 2. Atualizar o status da solicitação para 'rejeitado' ou 'desativado' (opcional, pode ser 'rejeitado')
-        batch.update(requestRef, { status: 'rejeitado' }); // Ou crie um novo status 'desativado'
+        // 2. Atualizar o status da solicitação para 'rejeitado' ou 'desativado'
+        batch.update(requestRef, { status: 'rejeitado' });
 
         await batch.commit();
         alert('Status de moderador desativado com sucesso!');
-        loadModeratorRequests(true); // Recarrega a lista
+        loadModeratorRequests(true);
     } catch (error) {
         console.error("Erro ao desativar moderador:", error);
         alert("Não foi possível desativar o moderador.");
     }
+}
+
+// ... (código existente) ...
+
+// No event listener moderatorRequestsTbody (linha ~587)
+if (moderatorRequestsTbody) {
+    moderatorRequestsTbody.addEventListener('click', async (e) => {
+        const target = e.target;
+        const requestId = target.dataset.id; // request ID
+        const userId = target.dataset.userId; // user ID
+
+        // Verifica se o userId é válido antes de prosseguir
+        if (target.classList.contains('deactivate-moderator-btn')) {
+            if (!userId) { // Adiciona esta verificação
+                alert("Não foi possível identificar o usuário. Tente recarregar a página.");
+                console.error("Erro: userId não encontrado no dataset do botão Desativar.", target);
+                return;
+            }
+            if (confirm('Tem certeza que deseja DESATIVAR o status de moderador para este usuário?')) {
+                await deactivateModerator(userId, requestId);
+            }
+        } else if (target.classList.contains('approve-request-btn')) {
+            // ... (seu código existente) ...
+        } else if (target.classList.contains('reject-request-btn')) {
+            // ... (seu código existente) ...
+        }
+    });
 }
