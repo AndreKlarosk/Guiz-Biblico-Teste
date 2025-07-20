@@ -258,7 +258,17 @@ if (chatForm) {
 
         chatInput.disabled = true;
 
-        // Verificar se o usuário está silenciado
+        // --- INÍCIO DA CORREÇÃO ---
+        // 1. Verificar se o usuário é membro do grupo
+        if (!groupData || !groupData.memberUIDs.includes(currentUser.uid)) {
+            showAlert("Você precisa ser membro do grupo para enviar mensagens.");
+            chatInput.value = '';
+            chatInput.disabled = false;
+            chatInput.focus();
+            return;
+        }
+
+        // 2. Verificar se o usuário está silenciado
         try { 
             const userDoc = await getDoc(doc(db, 'usuarios', currentUser.uid));
             const userData = userDoc.data();
@@ -276,6 +286,7 @@ if (chatForm) {
             chatInput.focus();
             return;
         }
+        // --- FIM DA CORREÇÃO ---
 
         try {
             const messagesRef = collection(db, 'grupos', groupId, 'mensagens');
