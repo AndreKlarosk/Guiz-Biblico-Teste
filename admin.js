@@ -651,7 +651,7 @@ if (filterModeratorStatusSelect) {
 if (moderatorRequestsTbody) {
     moderatorRequestsTbody.addEventListener('click', async (e) => {
         const target = e.target;
-        const requestId = target.dataset.id; // ID da solicitação
+          const requestId = target.dataset.requestId; // ID da solicitação
         const userId = target.dataset.userId; // ID do usuário
 
         // Lógica para aprovar, rejeitar ou desativar moderador
