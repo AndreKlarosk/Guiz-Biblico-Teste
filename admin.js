@@ -1,7 +1,7 @@
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, query, orderBy, limit, startAfter, where, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { showAlert } from './utils.js'; // <-- NOVA IMPORTAÇÃO
+import { showAlert } from './utils.js'; // Importa o showAlert
 
 // --- Elementos da Interface do Usuário (UI) ---
 const adminContent = document.getElementById('admin-content');
@@ -53,6 +53,26 @@ const filterModeratorStatusSelect = document.getElementById('filter-moderator-st
 const requestsPerPage = 10;
 let lastVisibleRequest = null;
 
+// NOVOS ELEMENTOS: Gerenciamento de Grupos
+const adminGroupsTable = document.getElementById('admin-groups-table');
+const adminGroupsTbody = document.getElementById('admin-groups-tbody');
+const loadMoreAdminGroupsBtn = document.getElementById('load-more-admin-groups-btn');
+const filterGroupSearch = document.getElementById('filter-group-search');
+
+// NOVOS ELEMENTOS: Modal de Detalhes do Grupo (Admin)
+const adminGroupDetailsModal = document.getElementById('admin-group-details-modal');
+const closeAdminGroupDetailsModal = document.getElementById('close-admin-group-details-modal');
+const closeAdminGroupDetailsBtn = document.getElementById('close-admin-group-details-btn');
+const adminGroupDetailName = document.getElementById('admin-group-detail-name');
+const adminGroupDetailCreator = document.getElementById('admin-group-detail-creator');
+const adminGroupDetailDifficulty = document.getElementById('admin-group-detail-difficulty');
+const adminGroupDetailRankingTbody = document.getElementById('admin-group-detail-ranking-tbody');
+const adminGroupDetailChatMessages = document.getElementById('admin-group-detail-chat-messages');
+
+let lastVisibleGroup = null;
+let currentGroupDetailsUnsubscribe = null; // Para desinscrever do listener do chat do grupo
+
+
 // Planos para referência (mantidos para consistência, mas o ideal é que venham do Firestore em um app real)
 const MODERATOR_PLANS = {
     "basico": { preco: 10, grupos: 1, maxConvidados: 5 },
@@ -73,6 +93,7 @@ onAuthStateChanged(auth, async (user) => {
             loadQuestions();
             loadSuggestions();
             loadModeratorRequests(); // Carregar solicitações de moderador ao carregar o painel
+            loadAdminGroups(); // Carregar grupos para o admin
         } else {
             console.warn("User is NOT admin or user document does not exist. Denying access.");
             authGuardMessage.innerHTML = '<h2>Acesso Negado</h2><p>Você não tem permissão para acessar esta página.</p>';
@@ -820,5 +841,293 @@ async function deactivateModerator(userId, requestId) { // userId e requestId s�
     } catch (error) {
         console.error("Erro ao desativar moderador:", error);
         showAlert("Não foi possível desativar o moderador.");
+    }
+}
+
+
+// --- NOVAS FUNÇÕES: Gerenciamento de Grupos (Admin) ---
+async function loadAdminGroups(clear = true) {
+    console.log("Loading admin groups. Clear:", clear);
+    if (clear) {
+        adminGroupsTbody.innerHTML = '<tr><td colspan="5">Carregando grupos...</td></tr>';
+        lastVisibleGroup = null;
+    }
+
+    try {
+        let q = query(collection(db, "grupos"), orderBy("dataCriacao", "desc"), limit(10)); // Limite de 10 grupos por vez
+        
+        // Se houver filtro de pesquisa
+        const searchTerm = filterGroupSearch.value.trim().toLowerCase();
+        if (searchTerm) {
+            // Firestore não permite "LIKE" ou "CONTAINS" diretamente.
+            // Para pesquisa de texto completo, você precisaria de uma solução de terceiros (Algolia, ElasticSearch)
+            // ou uma lógica mais complexa de "startsWith" para nomes (se eles começarem com o termo)
+            // Por simplicidade, vamos filtrar apenas no lado do cliente (menos eficiente para muitos grupos)
+            // OU, se você quiser filtrar no servidor, seria assim (mas requer que a string comece com o termo):
+            // q = query(baseQuery, where("nomeDoGrupo", ">=", searchTerm), where("nomeDoGrupo", "<=", searchTerm + '\uf8ff'), orderBy("nomeDoGrupo"), limit(10));
+            // Por enquanto, apenas leitura paginada, e o filtro seria pós-carregamento.
+        }
+
+        if (lastVisibleGroup && clear === false) {
+            q = query(collection(db, "grupos"), orderBy("dataCriacao", "desc"), startAfter(lastVisibleGroup), limit(10));
+        }
+
+        const querySnapshot = await getDocs(q);
+        const newGroups = [];
+        querySnapshot.forEach((doc) => {
+            newGroups.push({ id: doc.id, ...doc.data() });
+        });
+
+        if (clear) {
+            adminGroupsTbody.innerHTML = '';
+        }
+
+        if (newGroups.length === 0 && clear) {
+            console.log("No groups found.");
+            adminGroupsTbody.innerHTML = '<tr><td colspan="5">Nenhum grupo encontrado.</td></tr>';
+            loadMoreAdminGroupsBtn.classList.add('hidden');
+            return;
+        }
+
+        newGroups.forEach((group) => {
+            const row = document.createElement('tr');
+            const memberCount = group.memberUIDs ? group.memberUIDs.length : 0;
+            row.innerHTML = `
+                <td>${group.nomeDoGrupo}</td>
+                <td>${group.criadorNome || 'N/A'}</td>
+                <td>${memberCount}</td>
+                <td style="text-transform: capitalize;">${group.difficulty || 'N/A'}</td>
+                <td class="actions-cell">
+                    <button class="btn btn-small view-group-details-btn" data-group-id="${group.id}">Ver Detalhes</button>
+                </td>
+            `;
+            adminGroupsTbody.appendChild(row);
+        });
+
+        if (querySnapshot.docs.length < 10) { // Se trouxe menos que o limite, não há mais para carregar
+            loadMoreAdminGroupsBtn.classList.add('hidden');
+        } else {
+            loadMoreAdminGroupsBtn.classList.remove('hidden');
+            lastVisibleGroup = querySnapshot.docs[querySnapshot.docs.length - 1];
+        }
+        console.log(`${newGroups.length} groups loaded for admin.`);
+
+    } catch (error) {
+        console.error("Erro ao carregar grupos para admin:", error);
+        adminGroupsTbody.innerHTML = '<tr><td colspan="5">Erro ao carregar grupos.</td></tr>';
+        loadMoreAdminGroupsBtn.classList.add('hidden');
+    }
+}
+
+// Event listeners para a seção de gerenciamento de grupos
+if (loadMoreAdminGroupsBtn) {
+    loadMoreAdminGroupsBtn.addEventListener('click', () => loadAdminGroups(false));
+}
+
+if (filterGroupSearch) {
+    filterGroupSearch.addEventListener('input', () => loadAdminGroups(true)); // Recarregar com o novo termo de busca
+}
+
+// Event listener para abrir o modal de detalhes do grupo
+if (adminGroupsTbody) {
+    adminGroupsTbody.addEventListener('click', async (e) => {
+        const target = e.target;
+        if (target.classList.contains('view-group-details-btn')) {
+            const groupId = target.dataset.groupId;
+            if (groupId) {
+                await openAdminGroupDetailsModal(groupId);
+            }
+        }
+    });
+}
+
+// Lógica para o Modal de Detalhes do Grupo no Admin
+if (closeAdminGroupDetailsModal) {
+    closeAdminGroupDetailsModal.addEventListener('click', () => {
+        if (adminGroupDetailsModal) adminGroupDetailsModal.classList.remove('visible');
+        if (currentGroupDetailsUnsubscribe) { // Desinscrever do chat ao fechar
+            currentGroupDetailsUnsubscribe();
+            currentGroupDetailsUnsubscribe = null;
+        }
+    });
+}
+if (closeAdminGroupDetailsBtn) {
+    closeAdminGroupDetailsBtn.addEventListener('click', () => {
+        if (adminGroupDetailsModal) adminGroupDetailsModal.classList.remove('visible');
+        if (currentGroupDetailsUnsubscribe) { // Desinscrever do chat ao fechar
+            currentGroupDetailsUnsubscribe();
+            currentGroupDetailsUnsubscribe = null;
+        }
+    });
+}
+
+async function openAdminGroupDetailsModal(groupId) {
+    if (!groupId) return;
+    console.log("Opening admin group details for group ID:", groupId);
+
+    try {
+        const groupRef = doc(db, 'grupos', groupId);
+        const groupDoc = await getDoc(groupRef);
+
+        if (!groupDoc.exists()) {
+            showAlert("Grupo não encontrado.");
+            return;
+        }
+
+        const groupData = groupDoc.data();
+        adminGroupDetailName.textContent = groupData.nomeDoGrupo;
+        adminGroupDetailCreator.textContent = groupData.criadorNome || 'N/A';
+        adminGroupDetailDifficulty.textContent = groupData.difficulty || 'N/A';
+
+        // Preencher Ranking de Membros
+        if (adminGroupDetailRankingTbody) {
+            adminGroupDetailRankingTbody.innerHTML = '';
+            const members = Object.values(groupData.membros || {}).sort((a, b) => b.pontuacaoNoGrupo - a.pontuacaoNoGrupo);
+
+            for (const member of members) { // Usar for...of para await dentro
+                const row = document.createElement('tr');
+                const userDoc = await getDoc(doc(db, 'usuarios', member.uid));
+                const userData = userDoc.exists() ? userDoc.data() : {};
+                const silencedUntil = userData.silenciadoAte && userData.silenciadoAte.toDate();
+                const isSilenced = silencedUntil && silencedUntil > new Date();
+
+                const silenceButtonText = isSilenced ? `Silenciado até ${silencedUntil.toLocaleTimeString()}` : 'Silenciar';
+                const silenceButtonClass = isSilenced ? 'btn-secondary' : 'btn-danger';
+                const silenceButtonDisabled = isSilenced ? 'disabled' : '';
+
+                row.innerHTML = `
+                    <td>
+                        <div class="member-info-with-button">
+                            <img src="${member.fotoURL || 'https://placehold.co/30x30'}" alt="${member.nome}">
+                            <span>${member.nome}</span>
+                        </div>
+                    </td>
+                    <td>${member.pontuacaoNoGrupo || 0}</td>
+                    <td class="member-actions">
+                        <button class="btn btn-small ${silenceButtonClass}" 
+                                data-member-uid="${member.uid}" 
+                                data-group-id="${groupId}" 
+                                ${silenceButtonDisabled}>
+                            ${silenceButtonText}
+                        </button>
+                    </td>
+                `;
+                adminGroupDetailRankingTbody.appendChild(row);
+            }
+
+            adminGroupDetailRankingTbody.querySelectorAll('.member-actions .btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const memberUidToSilence = e.currentTarget.dataset.memberUid;
+                    const groupIdForSilence = e.currentTarget.dataset.groupId;
+                    await silenceMember(groupIdForSilence, memberUidToSilence);
+                });
+            });
+        }
+
+        // Carregar Chat do Grupo (usando onSnapshot para atualizações em tempo real)
+        if (adminGroupDetailChatMessages) {
+            adminGroupDetailChatMessages.innerHTML = 'Carregando mensagens do chat...';
+            if (currentGroupDetailsUnsubscribe) {
+                currentGroupDetailsUnsubscribe(); // Desinscrever do chat anterior se houver
+            }
+
+            const chatMessagesRef = collection(db, 'grupos', groupId, 'mensagens');
+            const q = query(chatMessagesRef, orderBy('timestamp'));
+
+            currentGroupDetailsUnsubscribe = onSnapshot(q, async (snapshot) => { // Usar async no callback
+                adminGroupDetailChatMessages.innerHTML = ''; // Limpar antes de adicionar novas
+                for (const docSnapshot of snapshot.docs) { // Usar for...of para await dentro
+                    const msg = docSnapshot.data();
+                    const messageElement = document.createElement('div');
+                    messageElement.classList.add('admin-chat-message');
+
+                    // Verificar se o usuário está silenciado para exibir o status da mensagem
+                    let senderName = msg.senderName || 'Desconhecido';
+                    if (msg.senderUid) {
+                        const senderUserDoc = await getDoc(doc(db, 'usuarios', msg.senderUid));
+                        if (senderUserDoc.exists()) {
+                            const senderData = senderUserDoc.data();
+                            const silencedUntil = senderData.silenciadoAte && senderData.silenciadoAte.toDate();
+                            if (silencedUntil && silencedUntil > new Date()) {
+                                messageElement.classList.add('silenced');
+                                senderName += ' (silenciado)';
+                            }
+                        }
+                    } else if (msg.systemMessage) { // Mensagens do sistema não têm senderUid
+                        messageElement.classList.add('system-message');
+                    }
+                    
+                    messageElement.innerHTML = `
+                        <div class="message-sender">${senderName}</div>
+                        <div class="message-bubble">${msg.text}</div>
+                    `;
+                    adminGroupDetailChatMessages.appendChild(messageElement);
+                }
+                adminGroupDetailChatMessages.scrollTop = adminGroupDetailChatMessages.scrollHeight; // Scroll para o fim
+            }, (error) => {
+                console.error("Erro ao ouvir o chat do grupo no admin:", error);
+                adminGroupDetailChatMessages.innerHTML = '<p style="color: red;">Erro ao carregar chat.</p>';
+            });
+        }
+
+        if (adminGroupDetailsModal) adminGroupDetailsModal.classList.add('visible');
+
+    } catch (error) {
+        console.error("Erro ao abrir detalhes do grupo no admin:", error);
+        showAlert("Não foi possível carregar os detalhes do grupo.");
+    }
+}
+
+// NOVA FUNÇÃO: Silenciar Membro do Chat
+async function silenceMember(groupId, memberUid) {
+    if (!memberUid || !groupId) {
+        showAlert("ID do membro ou grupo inválido para silenciar.");
+        return;
+    }
+
+    const durationMinutes = parseInt(prompt("Silenciar por quantos minutos? (0 para remover silenciamento)"));
+
+    if (isNaN(durationMinutes)) {
+        showAlert("Duração inválida. Por favor, insira um número.");
+        return;
+    }
+
+    const userToSilenceRef = doc(db, 'usuarios', memberUid);
+    const groupChatRef = collection(db, 'grupos', groupId, 'mensagens');
+
+    try {
+        const batch = writeBatch(db);
+        const userNameDoc = await getDoc(userToSilenceRef);
+        const userName = userNameDoc.exists() ? userNameDoc.data().nome : 'Membro Desconhecido';
+
+        if (durationMinutes > 0) {
+            const silencedUntil = new Date(new Date().getTime() + durationMinutes * 60 * 1000);
+            batch.update(userToSilenceRef, { silenciadoAte: silencedUntil });
+            
+            // Adicionar mensagem de sistema ao chat
+            batch.add(groupChatRef, {
+                text: `${userName} foi silenciado por ${durationMinutes} minuto(s) pelo administrador.`,
+                timestamp: serverTimestamp(),
+                systemMessage: true // Indica que é uma mensagem do sistema
+            });
+            showAlert(`${userName} silenciado por ${durationMinutes} minuto(s).`);
+        } else {
+            batch.update(userToSilenceRef, { silenciadoAte: null }); // Remove o campo
+            batch.add(groupChatRef, {
+                text: `${userName} foi liberado do silenciamento pelo administrador.`,
+                timestamp: serverTimestamp(),
+                systemMessage: true
+            });
+            showAlert(`${userName} foi liberado do silenciamento.`);
+        }
+
+        await batch.commit();
+        // O modal de detalhes do grupo se atualizará automaticamente via onSnapshot
+        // Recarregar os dados do grupo no modal para atualizar o status do botão "Silenciar"
+        await openAdminGroupDetailsModal(groupId);
+
+    } catch (error) {
+        console.error("Erro ao silenciar membro:", error);
+        showAlert("Não foi possível silenciar o membro.");
     }
 }
