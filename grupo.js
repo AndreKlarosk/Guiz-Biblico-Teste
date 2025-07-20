@@ -63,11 +63,8 @@ window.addEventListener('DOMContentLoaded', () => {
             if (transferModerationModal) transferModerationModal.classList.remove('visible');
         });
     }
-    window.addEventListener('click', (event) => {
-        if (event.target == transferModerationModal) {
-            if (transferModerationModal) transferModerationModal.classList.remove('visible');
-        }
-    });
+    // Não é mais necessário adicionar listener window.onclick aqui para este modal
+    // if (window.event.target == transferModerationModal) { ... }
 });
 
 async function loadGroupData() {
@@ -169,8 +166,8 @@ function updateActionButtons() {
         inviteBtn.innerHTML = '<i class="fas fa-share-alt"></i> Convidar Amigos';
         inviteBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(window.location.href)
-                .then(() => showAlert('Link de convite copiado!')) // Substituído alert
-                .catch(() => showAlert('Não foi possível copiar o link.')); // Substituído alert
+                .then(() => showAlert('Link de convite copiado!'))
+                .catch(() => showAlert('Não foi possível copiar o link.'));
         });
         groupActionsDiv.appendChild(inviteBtn);
     } else {
@@ -213,9 +210,9 @@ function loadChatMessages() {
     const messagesRef = collection(db, 'grupos', groupId, 'mensagens');
     const q = query(messagesRef, orderBy('timestamp'));
 
-    unsubscribeChat = onSnapshot(q, (querySnapshot) => {
+    unsubscribeChat = onSnapshot(q, async (querySnapshot) => { // Added async
         if (chatMessagesDiv) chatMessagesDiv.innerHTML = '';
-        querySnapshot.forEach((doc) => {
+        for (const doc of querySnapshot.docs) { // Changed to for...of for await
             const msg = doc.data();
             const messageElement = document.createElement('div');
             messageElement.classList.add('chat-message');
@@ -224,19 +221,32 @@ function loadChatMessages() {
             if (isMyMessage) {
                 messageElement.classList.add('my-message');
             }
-            if (msg.silenced) { // Se a mensagem está silenciada (apenas para exibição)
-                messageElement.classList.add('silenced');
+
+            // Fetch sender's data to check for 'silenciadoAte'
+            let senderName = msg.senderName || 'Desconhecido';
+            if (msg.senderUid) {
+                const senderUserDoc = await getDoc(doc(db, 'usuarios', msg.senderUid));
+                if (senderUserDoc.exists()) {
+                    const senderData = senderUserDoc.data();
+                    const silencedUntil = senderData.silenciadoAte && senderData.silenciadoAte.toDate();
+                    if (silencedUntil && silencedUntil > new Date()) {
+                        messageElement.classList.add('silenced');
+                        // Opcional: mostrar "silenciado" no nome, mas o CSS já pode estilizar a bolha
+                        // senderName += ' (silenciado)'; 
+                    }
+                }
             }
             if (msg.systemMessage) { // Mensagens do sistema (ex: silenciamento)
                 messageElement.classList.add('system-message');
             }
 
+
             messageElement.innerHTML = `
-                <div class="message-sender">${isMyMessage ? 'Eu' : msg.senderName || 'Sistema'}</div>
+                <div class="message-sender">${isMyMessage ? 'Eu' : senderName || 'Sistema'}</div>
                 <div class="message-bubble">${msg.text}</div>
             `;
             if (chatMessagesDiv) chatMessagesDiv.appendChild(messageElement);
-        });
+        }
         if (chatMessagesDiv) chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
     });
 }
@@ -273,7 +283,7 @@ if (chatForm) {
             chatInput.value = '';
         } catch (error) {
             console.error("Erro ao enviar mensagem:", error);
-            showAlert("Não foi possível enviar a sua mensagem."); // Substituído alert
+            showAlert("Não foi possível enviar a sua mensagem.");
         } finally {
             chatInput.disabled = false;
             chatInput.focus();
@@ -313,7 +323,7 @@ async function joinGroup() {
 
     } catch (error) {
         console.error("Erro ao entrar no grupo:", error);
-        showAlert("Não foi possível entrar no grupo."); // Substituído alert
+        showAlert("Não foi possível entrar no grupo.");
         if (joinBtn) {
             joinBtn.disabled = false;
             joinBtn.innerHTML = '<i class="fas fa-user-plus"></i> Entrar no Grupo';
@@ -335,7 +345,7 @@ async function removeMember(memberUid) {
             await loadGroupData();
         } catch (error) {
             console.error("Erro ao remover membro:", error);
-            showAlert("Não foi possível remover o membro."); // Substituído alert
+            showAlert("Não foi possível remover o membro.");
         }
     }
 }
@@ -374,7 +384,7 @@ if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
     const newName = editGroupNameInput.value.trim();
     const newDifficulty = editGroupDifficultySelect.value;
     if (newName.length < 3) {
-        showAlert("O nome do grupo deve ter pelo menos 3 caracteres."); // Substituído alert
+        showAlert("O nome do grupo deve ter pelo menos 3 caracteres.");
         return;
     }
 
@@ -392,7 +402,7 @@ if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
         await loadGroupData();
     } catch (error) {
         console.error("Erro ao editar grupo:", error);
-        showAlert("Não foi possível salvar as alterações."); // Substituído alert
+        showAlert("Não foi possível salvar as alterações.");
     } finally {
         saveGroupBtn.disabled = false;
         saveGroupBtn.textContent = 'Salvar Alterações';
@@ -401,7 +411,7 @@ if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
 
 async function deleteGroup() {
     if (!currentUser || !groupData || currentUser.uid !== groupData.criadorUid) {
-        showAlert("Você não tem permissão para excluir este grupo."); // Substituído alert
+        showAlert("Você não tem permissão para excluir este grupo.");
         return;
     }
 
@@ -416,12 +426,12 @@ async function deleteGroup() {
                 gruposCriados: arrayRemove(groupId)
             });
 
-            showAlert("Grupo excluído com sucesso."); // Substituído alert
+            showAlert("Grupo excluído com sucesso.");
             // Redireciona para a página inicial
             window.location.href = 'index.html';
         } catch (error) {
             console.error("Erro ao excluir grupo:", error);
-            showAlert("Não foi possível excluir o grupo."); // Substituído alert
+            showAlert("Não foi possível excluir o grupo.");
         }
     }
 }
@@ -499,21 +509,22 @@ async function transferModeration(newModeratorUid, newModeratorName) {
         // Opcional: Se o moderador antigo não tiver mais grupos, remover o status de moderador e plano
         const oldModeratorDoc = await getDoc(oldModeratorRef);
         const oldModeratorData = oldModeratorDoc.data();
-        if (oldModeratorData.gruposCriados && oldModeratorData.gruposCriados.length <= 1) { // <=1 porque ainda não removemos o grupo no batch
-             // Se este for o último grupo que o antigo moderador tem, redefina o status
-             // A segurança das regras do Firestore deve garantir que ele possa fazer isso em si mesmo.
+        // A condição <=1 é porque o arrayRemove ainda não foi executado no Firestore no momento desta avaliação
+        const remainingGroups = (oldModeratorData.gruposCriados || []).filter(id => id !== groupId); 
+        if (remainingGroups.length === 0) { 
              batch.update(oldModeratorRef, {
                  moderador: false,
                  plano: null,
                  dataAtivacao: null
              });
+             showAlert(`O moderador antigo (${oldModeratorData.nome}) não tem mais grupos e teve seu status de moderador removido.`);
         }
 
 
         // 3. Adicionar o grupo à lista de grupos criados do novo moderador
         const newModeratorRef = doc(db, 'usuarios', newModeratorUid);
-        // Garante que o novo moderador tenha os campos de moderador setados se ainda não tiver
         const newModeratorDoc = await getDoc(newModeratorRef);
+        
         if (!newModeratorDoc.exists() || !newModeratorDoc.data().moderador) {
             // Se o novo moderador não for ainda um moderador (e não tem um plano),
             // ele "herda" o plano básico para este grupo, ou você pode ter uma lógica diferente
@@ -526,9 +537,11 @@ async function transferModeration(newModeratorUid, newModeratorName) {
             });
             showAlert(`Membro ${newModeratorName} foi promovido a Moderador com Plano Básico!`);
         } else {
+             // Se ele já é moderador, apenas adiciona o grupo
              batch.update(newModeratorRef, {
                 gruposCriados: arrayUnion(groupId)
             });
+            showAlert(`Grupo transferido para ${newModeratorName} (já é moderador).`);
         }
        
         await batch.commit();
