@@ -95,6 +95,13 @@ const submitModeratorRequestBtn = document.getElementById('submit-moderator-requ
 const requestConfirmationMessage = document.getElementById('request-confirmation-message');
 const pixModeratorKey = document.getElementById('pix-moderator-key');
 
+// Novos elementos do Modal de Alerta Personalizado
+const customAlertModal = document.getElementById('custom-alert-modal');
+const customAlertTitle = document.getElementById('custom-alert-title');
+const customAlertMessage = document.getElementById('custom-alert-message');
+const customAlertOkBtn = document.getElementById('custom-alert-ok-btn');
+const closeCustomAlertModal = document.getElementById('close-custom-alert-modal');
+
 
 // --- Estado do Quiz e Usuário ---
 let currentUser = null;
@@ -146,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Redireciona para o perfil para ver as notificações completas
                 window.location.href = `perfil.html?uid=${currentUser.uid}`;
             } else {
-                alert("Faça login para ver suas notificações.");
+                showAlert("Faça login para ver suas notificações."); // SUBSTITUÍDO
             }
         });
     }
@@ -155,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (becomeModeratorBtn) {
         becomeModeratorBtn.addEventListener('click', () => {
             if (!currentUser) {
-                alert("Você precisa estar logado para se tornar um moderador.");
+                showAlert("Você precisa estar logado para se tornar um moderador."); // SUBSTITUÍDO
                 return;
             }
             if (moderatorPlansModal) {
@@ -199,9 +206,45 @@ document.addEventListener('DOMContentLoaded', () => {
             moderatorPlansModal.classList.remove('visible');
         }
     });
+
+    // Event listeners para o novo Modal de Alerta Personalizado
+    if (customAlertOkBtn) {
+        customAlertOkBtn.addEventListener('click', () => {
+            if (customAlertModal) customAlertModal.classList.remove('visible');
+        });
+    }
+    if (closeCustomAlertModal) {
+        closeCustomAlertModal.addEventListener('click', () => {
+            if (customAlertModal) customAlertModal.classList.remove('visible');
+        });
+    }
 });
 
 // --- Funções ---
+// NOVA FUNÇÃO: Alerta Personalizado
+function showAlert(message, title = "Atenção!") {
+    if (customAlertTitle) customAlertTitle.textContent = title;
+    if (customAlertMessage) customAlertMessage.textContent = message;
+    if (customAlertModal) customAlertModal.classList.add('visible');
+
+    // Fechar o modal ao clicar em OK ou no X
+    const closeAlert = () => {
+        if (customAlertModal) customAlertModal.classList.remove('visible');
+        customAlertOkBtn.removeEventListener('click', closeAlert);
+        closeCustomAlertModal.removeEventListener('click', closeAlert);
+    };
+
+    customAlertOkBtn.addEventListener('click', closeAlert);
+    closeCustomAlertModal.addEventListener('click', closeAlert);
+
+    // Opcional: fechar ao clicar fora (se o modal tiver backdrop)
+    window.addEventListener('click', (event) => {
+        if (event.target === customAlertModal) {
+            closeAlert();
+        }
+    }, { once: true }); // Usar { once: true } para remover o listener automaticamente após o primeiro clique
+}
+
 function getAgeGroup(birthDateString) {
     if (!birthDateString) return "adulto";
     const birthDate = new Date(birthDateString);
@@ -393,7 +436,7 @@ if(saveDobBtn) {
     saveDobBtn.addEventListener('click', async () => {
         const dobValue = dobInput.value;
         if (!dobValue) {
-            alert("Por favor, selecione sua data de nascimento.");
+            showAlert("Por favor, selecione sua data de nascimento."); // SUBSTITUÍDO
             return;
         }
         if (currentUser) {
@@ -401,7 +444,7 @@ if(saveDobBtn) {
                 const userRef = doc(db, 'usuarios', currentUser.uid);
                 await updateDoc(userRef, { dataDeNascimento: dobValue });
                 currentUserAgeGroup = getAgeGroup(dobValue);
-                if (currentUserAgeGroup === 'crianca') {
+                if (currentUserAgeGroup === "crianca") {
                     document.body.classList.add('tema-crianca');
                 } else {
                     document.body.classList.remove('tema-crianca');
@@ -409,7 +452,7 @@ if(saveDobBtn) {
                 if(dobModal) dobModal.classList.remove('visible');
             } catch (error) {
                 console.error("Erro ao salvar data de nascimento: ", error);
-                alert("Não foi possível salvar a data. Tente novamente.");
+                showAlert("Não foi possível salvar a data. Tente novamente."); // SUBSTITUÍDO
             }
         }
     });
@@ -469,9 +512,9 @@ async function awardAchievement(uid, achievementKey) {
     }
 }
 
-if (createGroupBtn) createGroupBtn.addEventListener('click', async () => { // Adicionado 'async'
+if (createGroupBtn) createGroupBtn.addEventListener('click', async () => {
     if (!currentUser || !currentUserData) {
-        alert("Você precisa estar logado para criar um grupo.");
+        showAlert("Você precisa estar logado para criar um grupo."); // SUBSTITUÍDO
         return;
     }
 
@@ -480,7 +523,7 @@ if (createGroupBtn) createGroupBtn.addEventListener('click', async () => { // Ad
     console.log("Is moderator:", currentUserData.moderador);
 
     if (!currentUserData.moderador) {
-        alert("Você precisa ser um moderador para criar grupos. Clique em 'Tornar-se Moderador' para mais informações.");
+        showAlert("Você precisa ser um moderador para criar grupos. Clique em 'Tornar-se Moderador' para mais informações."); // SUBSTITUÍDO
         return;
     }
 
@@ -491,7 +534,7 @@ if (createGroupBtn) createGroupBtn.addEventListener('click', async () => { // Ad
     console.log(`Groups created: ${createdGroupsCount}, Max groups for plan ${currentUserData.plano}: ${maxGroups}`);
 
     if (maxGroups !== undefined && createdGroupsCount >= maxGroups) {
-        alert(`Você atingiu o limite de ${maxGroups} grupo(s) para o seu plano (${currentUserData.plano}).`);
+        showAlert(`Você atingiu o limite de ${maxGroups} grupo(s) para o seu plano (${currentUserData.plano}).`); // SUBSTITUÍDO
         return;
     }
 
@@ -501,13 +544,12 @@ if (cancelGroupBtn) cancelGroupBtn.addEventListener('click', () => createGroupMo
 if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
     if (!groupNameInput || !groupDifficultySelect) return;
     const groupName = groupNameInput.value.trim();
-    const groupDifficulty = groupDifficultySelect.value;
     if (groupName.length < 3) {
-        alert("O nome do grupo deve ter pelo menos 3 caracteres.");
+        showAlert("O nome do grupo deve ter pelo menos 3 caracteres."); // SUBSTITUÍDO
         return;
     }
     if (!currentUser || !currentUserData) {
-        alert("Precisa de estar logado para criar um grupo.");
+        showAlert("Precisa de estar logado para criar um grupo."); // SUBSTITUÍDO
         return;
     }
 
@@ -516,7 +558,7 @@ if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
     const maxGroups = MODERATOR_PLANS[currentUserData.plano]?.grupos;
 
     if (maxGroups !== undefined && createdGroupsCount >= maxGroups) {
-        alert(`Você atingiu o limite de ${maxGroups} grupo(s) para o seu plano (${currentUserData.plano}).`);
+        showAlert(`Você atingiu o limite de ${maxGroups} grupo(s) para o seu plano (${currentUserData.plano}).`); // SUBSTITUÍDO
         createGroupModal.classList.remove('visible'); // Fecha o modal de criação de grupo
         return;
     }
@@ -526,7 +568,7 @@ if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
     try {
         const newGroup = {
             nomeDoGrupo: groupName,
-            difficulty: groupDifficulty,
+            difficulty: groupDifficultySelect.value, // Corrigido para pegar o valor do select
             criadorUid: currentUser.uid,
             criadorNome: currentUser.displayName,
             dataCriacao: serverTimestamp(),
@@ -551,13 +593,13 @@ if (saveGroupBtn) saveGroupBtn.addEventListener('click', async () => {
         currentUserData.gruposCriados.push(docRef.id); // Atualiza o estado local do currentUserData
 
         await awardAchievement(currentUser.uid, 'fundador_de_grupo');
-        alert(`Grupo "${groupName}" criado com sucesso!`);
+        showAlert(`Grupo "${groupName}" criado com sucesso!`); // SUBSTITUÍDO
         groupNameInput.value = '';
         createGroupModal.classList.remove('visible');
         await loadUserGroups(currentUser.uid);
     } catch (error) {
         console.error("Erro ao criar grupo:", error);
-        alert("Não foi possível criar o grupo.");
+        showAlert("Não foi possível criar o grupo."); // SUBSTITUÍDO
     } finally {
         saveGroupBtn.disabled = false;
         saveGroupBtn.textContent = 'Criar';
@@ -618,12 +660,12 @@ async function startQuiz(difficulty) {
             switchScreen('quiz-screen');
             displayQuestion();
         } else {
-            alert(`Não foram encontradas perguntas para a dificuldade ${difficulty}.`);
+            showAlert(`Não foram encontradas perguntas para a dificuldade ${difficulty}.`); // SUBSTITUÍDO
             switchScreen('initial-screen');
         }
     } catch (error) {
         console.error("Erro ao buscar perguntas: ", error);
-        alert("Ocorreu um erro ao carregar as perguntas.");
+        showAlert("Ocorreu um erro ao carregar as perguntas."); // SUBSTITUÍDO
     }
 }
 
@@ -744,7 +786,7 @@ async function checkAndAwardAchievements(userRef, currentQuizScore, currentQuizC
     if (newAchievements.length > 0) {
         await updateDoc(userRef, { conquistas: arrayUnion(...newAchievements) });
         setTimeout(() => {
-            alert(`Parabéns! Você desbloqueou ${newAchievements.length} nova(s) conquista(s)!`);
+            showAlert(`Parabéns! Você desbloqueou ${newAchievements.length} nova(s) conquista(s)!`); // SUBSTITUÍDO
         }, 500);
     }
 }
@@ -811,7 +853,7 @@ async function loadChapterText() {
         bibleTextDisplay.innerHTML = chapterHtml;
     } catch (error) {
         console.error("Erro ao buscar capítulo da Bíblia:", error);
-        bibleTextDisplay.innerHTML = `<p style="color: red;">Erro ao carregar o capítulo. Tente novamente.</p>`;
+        showAlert("Erro ao carregar o capítulo. Tente novamente."); // SUBSTITUÍDO
     }
 }
 if (bibleCard) bibleCard.addEventListener('click', () => { if (bibleModal) bibleModal.classList.add('visible'); });
@@ -833,14 +875,14 @@ if (cancelCreateCompetitionBtn) cancelCreateCompetitionBtn.addEventListener('cli
     if(createCompetitionModal) createCompetitionModal.classList.remove('visible');
 });
 if (createCompetitionBtn) createCompetitionBtn.addEventListener('click', async () => {
-    if (!currentUser) return alert("Você precisa estar logado.");
+    if (!currentUser) return showAlert("Você precisa estar logado."); // SUBSTITUÍDO
     
     const difficulty = competitionDifficultySelect.value;
     const numQuestions = parseInt(competitionQuestionsSelect.value);
     const minPlayers = parseInt(competitionMinPlayersInput.value);
 
     if(minPlayers < 2) {
-        alert("O mínimo de participantes deve ser 2 ou mais.");
+        showAlert("O mínimo de participantes deve ser 2 ou mais."); // SUBSTITUÍDO
         return;
     }
     
@@ -900,7 +942,7 @@ if (createCompetitionBtn) createCompetitionBtn.addEventListener('click', async (
 
     } catch (error) {
         console.error("Erro ao criar competição:", error);
-        alert(error.message);
+        showAlert(error.message); // SUBSTITUÍDO
     } finally {
         createCompetitionBtn.disabled = false;
         createCompetitionBtn.textContent = "Criar Sala";
@@ -909,10 +951,10 @@ if (createCompetitionBtn) createCompetitionBtn.addEventListener('click', async (
     }
 });
 if (joinCompetitionBtn) joinCompetitionBtn.addEventListener('click', async () => {
-    if (!currentUser) return alert("Você precisa estar logado.");
+    if (!currentUser) return showAlert("Você precisa estar logado."); // SUBSTITUÍDO
     
     const code = joinCodeInput.value.trim().toUpperCase();
-    if (code.length < 5) return alert("Código inválido.");
+    if (code.length < 5) return showAlert("Código inválido."); // SUBSTITUÍDO
 
     joinCompetitionBtn.disabled = true;
     joinCompetitionBtn.textContent = "...";
@@ -942,7 +984,7 @@ if (joinCompetitionBtn) joinCompetitionBtn.addEventListener('click', async () =>
 
     } catch (error) {
         console.error("Erro ao entrar na competição:", error);
-        alert(error.message);
+        showAlert(error.message); // SUBSTITUÍDO
     } finally {
         joinCompetitionBtn.disabled = false;
         joinCompetitionBtn.textContent = "Entrar";
@@ -974,7 +1016,7 @@ function showWaitingRoom(isCreator) {
 
     unsubscribeCompetition = onSnapshot(doc(db, 'competicoes', activeCompetitionId), (docSnapshot) => {
         if (!docSnapshot.exists()) {
-            alert("A sala de competição foi fechada pelo criador.");
+            showAlert("A sala de competição foi fechada pelo criador."); // SUBSTITUÍDO
             leaveWaitingRoom();
             return;
         }
@@ -1022,7 +1064,7 @@ function showWaitingRoom(isCreator) {
         if (data.estado === 'em_andamento') {
             if (unsubscribeCompetition) unsubscribeCompetition();
             if(waitingRoomModal) waitingRoomModal.classList.remove('visible');
-            alert("A competição vai começar!");
+            showAlert("A competição vai começar!"); // SUBSTITUÍDO
             startCompetitionQuiz(data.perguntas);
         }
     });
@@ -1072,7 +1114,7 @@ if(chatFormWaitingRoom) {
             });
         } catch(error) {
             console.error("Erro ao enviar mensagem:", error);
-            chatInputWaitingRoom.value = messageText; // Retorna a mensagem ao input se falhar
+            showAlert("Não foi possível enviar a sua mensagem."); // SUBSTITUÍDO
         }
     });
 }
@@ -1090,7 +1132,7 @@ function startCompetitionQuiz(competitionQuestions) {
         switchScreen('quiz-screen');
         displayQuestion();
     } else {
-        alert("Erro: Nenhuma pergunta foi carregada para a competição.");
+        showAlert("Erro: Nenhuma pergunta foi carregada para a competição."); // SUBSTITUÍDO
         switchScreen('initial-screen');
     }
 }
@@ -1105,20 +1147,18 @@ async function leaveWaitingRoom() {
     const isCreator = startCompetitionBtn && !startCompetitionBtn.classList.contains('hidden');
 
     if(isCreator) {
-        // Se o criador sai, a sala é deletada
         if(confirm("Você é o criador da sala. Sair irá fechar a sala para todos. Deseja continuar?")) {
             const competitionRef = doc(db, 'competicoes', activeCompetitionId);
             const batch = writeBatch(db);
             batch.delete(competitionRef);
             await batch.commit(); // A sala será fechada para todos via onSnapshot
         } else {
-            return; // O criador cancelou a saída
+            return;
         }
     } else {
-        // Se um participante normal sai, ele é removido da lista
         const competitionRef = doc(db, 'competicoes', activeCompetitionId);
         await updateDoc(competitionRef, {
-            [`participantes.${currentUser.uid}`]: null // Firestore não tem um 'delete field', então usamos null e filtramos
+            [`participantes.${currentUser.uid}`]: null
         });
     }
 
@@ -1202,7 +1242,7 @@ if (copyPixKeyBtn) {
             }, 2000);
         }).catch(err => {
             console.error('Erro ao copiar a chave PIX:', err);
-            alert('Não foi possível copiar a chave.');
+            showAlert('Não foi possível copiar a chave.'); // SUBSTITUÍDO
         });
     });
 }
@@ -1210,23 +1250,23 @@ if (copyPixKeyBtn) {
 // --- Lógica do Novo Modo de Moderador ---
 async function submitModeratorRequest() {
     if (!currentUser) {
-        alert("Você precisa estar logado para enviar uma solicitação.");
+        showAlert("Você precisa estar logado para enviar uma solicitação."); // SUBSTITUÍDO
         return;
     }
     if (!selectedPlan) {
-        alert("Por favor, selecione um plano.");
+        showAlert("Por favor, selecione um plano."); // SUBSTITUÍDO
         return;
     }
 
     const whatsapp = whatsappInput.value.trim();
 
     if (!whatsapp) {
-        alert("Por favor, preencha seu número de WhatsApp.");
+        showAlert("Por favor, preencha seu número de WhatsApp."); // SUBSTITUÍDO
         return;
     }
 
     if (!/^\d+$/.test(whatsapp)) {
-        alert("O número de WhatsApp deve conter apenas números.");
+        showAlert("O número de WhatsApp deve conter apenas números."); // SUBSTITUÍDO
         return;
     }
 
@@ -1256,7 +1296,7 @@ async function submitModeratorRequest() {
         planCards.forEach(card => card.classList.remove('selected')); // Desmarcar seleção visual
     } catch (error) {
         console.error("Erro ao enviar solicitação de moderador:", error);
-        alert("Ocorreu um erro ao enviar sua solicitação. Tente novamente.");
+        showAlert("Ocorreu um erro ao enviar sua solicitação. Tente novamente."); // SUBSTITUÍDO
     } finally {
         submitModeratorRequestBtn.disabled = false;
         submitModeratorRequestBtn.textContent = 'Submeter Solicitação';
