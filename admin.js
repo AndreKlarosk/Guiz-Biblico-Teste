@@ -651,7 +651,7 @@ if (filterModeratorStatusSelect) {
 if (moderatorRequestsTbody) {
     moderatorRequestsTbody.addEventListener('click', async (e) => {
         const target = e.target;
-          const requestId = target.dataset.requestId; // ID da solicitação
+        const requestId = target.dataset.requestId; // CORREÇÃO: Usando data-request-id
         const userId = target.dataset.userId; // ID do usuário
 
         // Lógica para aprovar, rejeitar ou desativar moderador
@@ -747,7 +747,8 @@ async function deactivateModerator(userId, requestId) {
         return;
     }
 
-    const userRef = doc(db, 'usuarios', userId);
+    // A linha 751 (no código completo) / 674 (no snippet anterior) onde o erro ocorria:
+    const userRef = doc(db, 'usuarios', userId); 
     const requestRef = doc(db, 'solicitacoesModerador', requestId); // Referência à solicitação de moderador original
 
     try {
