@@ -271,12 +271,12 @@ async function loadProfileData() {
             displayProfileData(userDoc.data());
             if (contentDiv) contentDiv.classList.remove('hidden');
             // Popula o cabeçalho superior com as informações do usuário logado
-            if (currentUser) { // Verificar se currentUser existe para popular o cabeçalho
+            if (currentUser) {
                 if (profilePhotoHeader) profilePhotoHeader.src = currentUser.photoURL || "https://placehold.co/45x45/e0e0e0/333?text=?";
                 if (profileNameHeader) profileNameHeader.textContent = currentUser.displayName || "Você";
                 if (profilePhotoContainerHeader) {
-                    profilePhotoContainerHeader.className = 'profile-photo-container'; // Reset classes
-                    const equippedBorder = userDoc.data().bordaEquipada || 'default'; // Use a borda do perfil que está sendo visualizado
+                    profilePhotoContainerHeader.className = 'profile-photo-container';
+                    const equippedBorder = userDoc.data().bordaEquipada || 'default';
                     if (equippedBorder !== 'default') {
                         profilePhotoContainerHeader.classList.add(equippedBorder);
                     }
@@ -434,7 +434,8 @@ if (saveBioBtn) saveBioBtn.addEventListener('click', async () => {
         await updateDoc(doc(db, 'usuarios', profileUid), { bio: newBio });
         if (profileBio) profileBio.textContent = newBio;
         if (editBioModal) editBioModal.classList.remove('visible');
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Erro ao salvar a bio:", error);
         alert("Não foi possível salvar a bio.");
     } finally {
